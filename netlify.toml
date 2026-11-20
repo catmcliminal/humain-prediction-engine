@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# The game lives under /predictionengine2027/ (build output is dist/predictionengine2027).
+[[redirects]]
+  from = "/"
+  to = "/predictionengine2027/"
+  status = 301
+  force = false
