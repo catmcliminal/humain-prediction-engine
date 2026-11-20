@@ -6,3 +6,5 @@ dist
 .env*
 serviceAccount*.json
 database.rules.json
+functions/node_modules
+functions/lib
