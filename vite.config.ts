@@ -6,5 +6,5 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   base: '/predictionengine2027/',
   build: { outDir: 'dist/predictionengine2027', emptyOutDir: true, target: 'es2020' },
-  test: { include: ['tests/**/*.test.ts'], environment: 'node' },
+  test: { include: ["tests/*.test.ts"], environment: 'node' },
 });

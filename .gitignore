@@ -5,3 +5,4 @@ dist
 .firebase
 .env*
 serviceAccount*.json
+database.rules.json

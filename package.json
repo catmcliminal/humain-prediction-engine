@@ -7,7 +7,10 @@
     "test": "vitest run",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "rules:build": "node scripts/build-rules.mjs",
+    "test:rules": "HOST_PIN=test-pin-1234 node scripts/build-rules.mjs && firebase emulators:exec --only database --project demo-pe27 'vitest run -c vitest.rules.config.ts'",
+    "test:all": "npm test && npm run test:rules"
   },
   "keywords": [],
   "author": "",
@@ -15,7 +18,9 @@
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@types/node": "^26.6.6",
+    "firebase-tools": "^15.37.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
