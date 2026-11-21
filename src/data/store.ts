@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth, signInAnonymously } from 'firebase/auth';
 import {
-  connectDatabaseEmulator, getDatabase, onValue, push, ref, remove, serverTimestamp, set, update, type Database,
+  connectDatabaseEmulator, get, getDatabase, onValue, push, ref, remove, serverTimestamp, set, update, type Database,
 } from 'firebase/database';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { config } from '../config';
@@ -33,6 +33,9 @@ export class Store {
   everConnected = false;
   fatal: string | null = null;
   offset = 0; // server time minus local time
+  /** Host-only data: flags written by the Function. Empty for everyone else. */
+  flags: Record<string, { ts?: number }> = {};
+  isHost = false;
   private db!: Database;
   private base = `games/${config.gameId}`;
   private subs: Listener[] = [];
@@ -89,6 +92,35 @@ export class Store {
       );
     }
   }
+
+  /**
+   * Host check. The rules only let a host read `flags`, so a successful read is proof of host status
+   * (the page cannot read `hosts`). Called on #host load, and again after the PIN is accepted.
+   */
+  async detectHost(): Promise<boolean> {
+    try {
+      const snap = await get(this.r('flags'));
+      this.flags = snap.val() ?? {};
+      if (!this.isHost) {
+        this.isHost = true;
+        onValue(this.r('flags'), (s) => { this.flags = s.val() ?? {}; this.emit(); });
+      }
+      this.emit();
+      return true;
+    } catch {
+      this.isHost = false;
+      return false;
+    }
+  }
+  /** The PIN is checked by the database rules, never by this page. */
+  async claimHost(pin: string): Promise<boolean> {
+    try { await set(this.r(`hosts/${this.me}`), pin); } catch { return false; }
+    return this.detectHost();
+  }
+  /** HIDE: hidden on, restore marker off. */
+  hide(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: true, [`restored/${id}`]: null }); }
+  /** RESTORE: hidden off, restore marker on (the marker stops phones pre-hiding flagged text). */
+  restore(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: null, [`restored/${id}`]: true }); }
 
   private r(p: string) { return ref(this.db, `${this.base}/${p}`); }
 

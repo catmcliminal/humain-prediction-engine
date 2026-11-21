@@ -4,6 +4,13 @@ import { initializeApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
+import { readFileSync } from 'node:fs';
+// The Functions emulator and the web app use the "demo-pe27" namespace, which the emulator starts with open
+// rules. Load the real rules into it so the local app is tested under the same security rules as production.
+const rules = await fetch('http://127.0.0.1:9000/.settings/rules.json?ns=demo-pe27', {
+  method: 'PUT', headers: { Authorization: 'Bearer owner' }, body: readFileSync(new URL('../database.rules.json', import.meta.url)),
+});
+if (!rules.ok) throw new Error('could not load rules: ' + (await rules.text()));
 const game = process.argv[2] ?? 'ai-2027';
 const db = getDatabase(initializeApp({ projectId: 'demo-pe27', databaseURL: 'http://127.0.0.1:9000?ns=demo-pe27' }));
 const colors = ['#39ff14', '#00e5ff', '#ffe600', '#ff8a00', '#ff2bd6', '#b388ff'];
