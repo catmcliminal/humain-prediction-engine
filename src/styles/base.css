@@ -1,0 +1,44 @@
+:root{--bg:#05010f;--panel:#0b0420;--line:#2a1f55;--ink:#e8f7ff;--dim:#8a86b8;--g:#39ff14;--c:#00e5ff;--y:#ffe600;--o:#ff8a00;--m:#ff2bd6;--px:'Press Start 2P',monospace;--tx:'VT323',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--tx);font-size:22px;line-height:1.15;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button,input,textarea{font:inherit;color:inherit}
+button{font-family:var(--px);cursor:pointer;border:0;background:none;touch-action:manipulation}
+button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--c);outline-offset:2px}
+button:disabled{cursor:not-allowed}
+.px{font-family:var(--px)}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.scan{position:fixed;inset:0;pointer-events:none;z-index:90;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.04) 0 1px,transparent 1px 3px)}
+.scan::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.6))}
+main{position:relative;z-index:1}
+.spr{display:block;image-rendering:pixelated;flex:none}
+.cyber{animation:cyb 1.2s linear infinite}
+@keyframes cyb{0%{filter:hue-rotate(0) drop-shadow(0 0 4px #ff2bd6)}50%{filter:hue-rotate(180deg) drop-shadow(0 0 8px #00e5ff)}100%{filter:hue-rotate(360deg) drop-shadow(0 0 4px #ff2bd6)}}
+.cybertxt{background:linear-gradient(90deg,#ff2bd6,#00e5ff,#39ff14,#ffe600,#ff2bd6);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:cybtxt 1.5s linear infinite}
+@keyframes cybtxt{to{background-position:200% 0}}
+@keyframes blink{50%{opacity:0}}
+.blink{animation:blink 1s steps(2) infinite}
+@keyframes sheen{from{background-position:150% 0}to{background-position:-100% 0}}
+
+/* fire fx, toast */
+#fx{position:fixed;inset:0;z-index:80;pointer-events:none;display:none;background:rgba(5,1,15,.55)}
+#fx.go{display:block}
+.fx-target{position:absolute;top:16%;left:50%;transform:translateX(-50%);transition:transform .25s,opacity .25s}
+#fx.hit .fx-target{transform:translateX(-50%) scale(1.8);opacity:0}
+.fx-beam{position:absolute;left:50%;bottom:150px;width:6px;margin-left:-3px;height:0;background:linear-gradient(var(--g),#fff);box-shadow:0 0 14px var(--g);animation:beam .42s ease-in forwards}
+@keyframes beam{0%{height:0;opacity:1}85%{height:calc(84% - 150px);opacity:1}100%{height:calc(84% - 150px);opacity:0}}
+.fx-ship{position:absolute;bottom:90px;left:50%;transform:translateX(-50%)}
+.fx-msg{position:absolute;top:44%;width:100%;text-align:center;font-size:14px;color:var(--y);text-shadow:0 0 10px var(--y);opacity:0}
+#fx.hit .fx-msg{animation:pop .9s .1s forwards}
+@keyframes pop{0%{opacity:0;transform:scale(.6)}30%{opacity:1;transform:scale(1.1)}100%{opacity:1;transform:scale(1)}}
+.bit{position:absolute;top:calc(16% + 30px);left:50%;width:10px;height:10px;background:var(--bc);box-shadow:0 0 8px var(--bc);animation:bit .7s ease-out forwards}
+@keyframes bit{to{transform:translate(var(--dx),var(--dy));opacity:0}}
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%) translateY(-20px);z-index:85;font-family:var(--px);font-size:10px;line-height:1.6;padding:12px 14px;background:#000;border:2px solid var(--y);color:var(--y);opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%)}
+
+/* Reduced motion: marching, blinking, starfield and all animation stop; the fire animation is message-only. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .cybertxt{color:var(--ink)!important;background:none}
+}
