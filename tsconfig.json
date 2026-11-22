@@ -4,5 +4,5 @@
     "strict": true, "noEmit": true, "skipLibCheck": true, "resolveJsonModule": true, "isolatedModules": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests", "functions/src", "vite.config.ts"]
+  "include": ["src", "tests", "functions/src", "scripts/loadtest", "vite.config.ts"]
 }

@@ -13,7 +13,8 @@
     "test:all": "npm test && npm run test:rules && npm run test:functions",
     "test:functions": "HOST_PIN=test-pin-1234 node scripts/build-rules.mjs && npm --prefix functions run build && firebase emulators:exec --only functions,database,auth --project demo-pe27 'vitest run -c vitest.e2e.config.ts'",
     "emulators": "HOST_PIN=test-pin-1234 node scripts/build-rules.mjs && npm --prefix functions run build && firebase emulators:start --only functions,database,auth --project demo-pe27",
-    "seed": "node scripts/seed-emulator.mjs"
+    "seed": "node scripts/seed-emulator.mjs",
+    "loadtest": "tsx scripts/loadtest/run.ts"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +26,7 @@
     "@types/node": "^26.6.6",
     "firebase-admin": "^14.5.1",
     "firebase-tools": "^15.37.0",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
