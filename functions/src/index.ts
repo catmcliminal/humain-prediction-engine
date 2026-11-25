@@ -5,7 +5,9 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { RAID } from '../../src/shared/constants';
 import { activeGame, approvePlayer, flagPrediction, scrubPass } from './core';
 
-initializeApp();
+// In the cloud the database lives in Singapore, so name it explicitly (the default guess targets us-central1).
+// The emulator keeps the default.
+initializeApp(process.env.FUNCTIONS_EMULATOR ? undefined : { databaseURL: 'https://predictionengine-46f43-default-rtdb.asia-southeast1.firebasedatabase.app' });
 // Realtime Database has no Sydney region; Singapore is the closest. Database-triggered Functions must sit in the
 // database's region. The emulator assumes us-central1, so it is used there only.
 const region = process.env.FUNCTIONS_EMULATOR ? 'us-central1' : 'asia-southeast1';
