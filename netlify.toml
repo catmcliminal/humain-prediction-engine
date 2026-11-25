@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npx vite build"
   publish = "dist"
 
 # The game lives under /predictionengine2027/ (build output is dist/predictionengine2027).
