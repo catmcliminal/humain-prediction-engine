@@ -10,7 +10,7 @@ export const FREEZE_AT = 1798722000000;
 
 export function buildRules({ hostPin, freezeAt = FREEZE_AT } = {}) {
   if (!hostPin || typeof hostPin !== 'string') throw new Error('HOST_PIN is required');
-  if (hostPin === 'CHANGE-THIS-PIN') throw new Error('HOST_PIN is still the placeholder');
+  if (hostPin === 'CHANGE-THIS-PIN' || /(your|saved|change|example|placeholder|password)/i.test(hostPin)) throw new Error('HOST_PIN looks like a placeholder: use a real, random PIN');
   if (hostPin.length < 8) throw new Error('HOST_PIN must be at least 8 characters (anyone signed in can guess it)');
   if (/['"\\\s]/.test(hostPin)) throw new Error('HOST_PIN may not contain quotes, backslashes or spaces');
   const tpl = readFileSync(join(root, 'database.rules.template.json'), 'utf8');

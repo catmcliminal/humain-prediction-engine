@@ -14,6 +14,7 @@ describe('rules build script', () => {
   it.each([
     ['missing', undefined],
     ['the placeholder', 'CHANGE-THIS-PIN'],
+    ['an instruction placeholder', 'YOUR-SAVED-PIN'],
     ['too short', 'abc123'],
     ['containing a quote', "abcdefgh'x"],
     ['containing a space', 'abcd efgh1'],
