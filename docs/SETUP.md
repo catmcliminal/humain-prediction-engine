@@ -38,17 +38,12 @@ Claude adds `.firebaserc` and asks before deploying the rules and Functions.
 In the humain.au site's `netlify.toml`, with `GAME-SITE` the game site's Netlify name:
 ```toml
 [[redirects]]
-  from = "/predictionengine2027"
-  to = "/predictionengine2027/"
-  status = 301
-  force = true
-
-[[redirects]]
   from = "/predictionengine2027/*"
   to = "https://GAME-SITE.netlify.app/predictionengine2027/:splat"
   status = 200
   force = true
 ```
+(One rule is enough: `/*` also matches the bare path. A separate no-slash to slash redirect loops.)
 Don't link to the page from the main site's navigation; the QR code is the entry point.
 
 ## Host view
