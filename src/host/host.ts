@@ -11,8 +11,7 @@ const PAGE = 100;
 interface Item { id: string; p: Prediction; flagged: boolean; hidden: boolean; restored: boolean; scrubbed: boolean }
 
 /**
- * Moderation view (#host). Access is decided by the database rules: a correct PIN lets the player write
- * hosts/{uid}; the page only learns the result by trying to read `flags`, which only hosts can do.
+ * Moderation view (#host). No PIN: it is an unlinked address and the group is small and connected.
  * The projector never shows any of this.
  */
 export function mountHost(root: HTMLElement, store: Store) {
@@ -23,23 +22,6 @@ export function mountHost(root: HTMLElement, store: Store) {
     H.isFlagged = m.makeFlagger((await import('../shared/flagwords.json')).default as FlagList);
     render();
   });
-
-  function gate(msg = '') {
-    root.innerHTML = `<div class="hostgate"><h1 class="px">HOST VIEW</h1>
-      <form id="pinForm"><label class="field" for="pin">HOST PIN</label>
-      <input id="pin" class="inp" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="pinErr">
-      <p id="pinErr" class="err px" role="alert">${esc(msg)}</p>
-      <button class="big" type="submit">ENTER</button></form></div>`;
-    $('#pinForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pin = $<HTMLInputElement>('#pin').value.trim();
-      if (!pin) return;
-      const b = root.querySelector('button')!;
-      b.disabled = true;
-      const ok = await store.claimHost(pin);
-      if (ok) { build(); render(); } else { gate('WRONG PIN'); $('#pin').focus(); }
-    });
-  }
 
   function build() {
     root.innerHTML = `<div class="hostwrap">
@@ -133,9 +115,12 @@ export function mountHost(root: HTMLElement, store: Store) {
 
   store.on(() => { if (H.checked) render(); });
   setInterval(() => { if (H.checked) render(); }, 2000);
-  /* A host returning on the same device skips the PIN: the flags read succeeds. */
   root.innerHTML = '<div class="hostgate"><p class="px blink" role="status">CHECKING...</p></div>';
-  const check = (): Promise<boolean> =>
-    store.ready || store.fatal ? store.detectHost() : new Promise((r) => setTimeout(() => r(check()), 300));
-  check().then((ok) => { H.checked = true; if (ok) { build(); render(); } else gate(); });
+  const start = async (): Promise<void> => {
+    while (!store.ready && !store.fatal) await new Promise((r) => setTimeout(r, 300));
+    if (await store.detectHost()) { H.checked = true; build(); render(); return; }
+    root.innerHTML = '<div class="hostgate"><p class="px" role="alert">COULD NOT CONNECT</p><button class="big" id="hretry">RETRY</button></div>';
+    $('#hretry').addEventListener('click', () => { root.innerHTML = ''; void start(); });
+  };
+  void start();
 }

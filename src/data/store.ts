@@ -103,10 +103,7 @@ export class Store {
     }
   }
 
-  /**
-   * Host check. The rules only let a host read `flags`, so a successful read is proof of host status
-   * (the page cannot read `hosts`). Called on #host load, and again after the PIN is accepted.
-   */
+  /** Starts the host-only feed (flags). There is no PIN: any signed-in visitor of #host can moderate. */
   async detectHost(): Promise<boolean> {
     try {
       const snap = await get(this.r('flags'));
@@ -121,11 +118,6 @@ export class Store {
       this.isHost = false;
       return false;
     }
-  }
-  /** The PIN is checked by the database rules, never by this page. */
-  async claimHost(pin: string): Promise<boolean> {
-    try { await set(this.r(`hosts/${this.me}`), pin); } catch { return false; }
-    return this.detectHost();
   }
   /** HIDE: hidden on, restore marker off. */
   hide(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: true, [`restored/${id}`]: null }); }

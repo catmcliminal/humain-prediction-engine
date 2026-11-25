@@ -3,7 +3,6 @@ import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestE
 import { buildRules } from '../../scripts/build-rules.mjs';
 import { hasUrl } from '../../src/shared/text';
 
-const PIN = 'test-pin-1234';
 const G = 'games/g1';
 const TS = { '.sv': 'timestamp' };
 let live: RulesTestEnvironment; // freeze is in the future
@@ -24,8 +23,8 @@ const post = (d: ReturnType<typeof db>, uid: string, id: string, fields: Record<
   });
 
 beforeAll(async () => {
-  live = await initializeTestEnvironment({ projectId: 'demo-pe27-live', database: { host: '127.0.0.1', port: 9000, rules: buildRules({ hostPin: PIN }) } });
-  over = await initializeTestEnvironment({ projectId: 'demo-pe27-over', database: { host: '127.0.0.1', port: 9000, rules: buildRules({ hostPin: PIN, freezeAt: 1000 }) } });
+  live = await initializeTestEnvironment({ projectId: 'demo-pe27-live', database: { host: '127.0.0.1', port: 9000, rules: buildRules() } });
+  over = await initializeTestEnvironment({ projectId: 'demo-pe27-over', database: { host: '127.0.0.1', port: 9000, rules: buildRules({ freezeAt: 1000 }) } });
 });
 afterAll(async () => { await live.cleanup(); await over.cleanup(); });
 beforeEach(async () => { await live.clearDatabase(); await over.clearDatabase(); });
@@ -261,10 +260,9 @@ describe('freeze at midnight New Year\'s Eve', () => {
     await assertFails(b.ref(`${G}/ratings/p1/bob`).set(4));
     await assertFails(db(over, 'alice').ref(`${G}/players/alice/lastPost`).set(TS));
   });
-  it('does not stop the host moderating afterwards', async () => {
+  it('does not stop moderating afterwards', async () => {
     await setup();
     const h = db(over, 'host1');
-    await assertSucceeds(h.ref(`${G}/hosts/host1`).set(PIN));
     await assertSucceeds(h.ref(`${G}/hidden/p1`).set(true));
     await assertSucceeds(h.ref(`${G}/restored/p1`).set(true));
   });
@@ -275,37 +273,37 @@ describe('freeze at midnight New Year\'s Eve', () => {
   });
 });
 
-describe('host PIN, hiding and restoring', () => {
+describe('moderation (no PIN: any signed-in visitor of #host can hide and restore)', () => {
   beforeEach(() => seed(live, { ...joined('alice'), [`${G}/predictions/p1`]: { pid: 'alice', text: 'original prediction', tag: 3, ts: 5 } }));
-  it('rejects a wrong PIN and accepts the right one', async () => {
-    await assertFails(db(live, 'host1').ref(`${G}/hosts/host1`).set('wrong-pin'));
-    await assertFails(db(live, 'host1').ref(`${G}/hosts/host1`).set(''));
-    await assertSucceeds(db(live, 'host1').ref(`${G}/hosts/host1`).set(PIN));
-  });
-  it('cannot register someone else as a host', async () => { await assertFails(db(live, 'mallory').ref(`${G}/hosts/host1`).set(PIN)); });
-  it('only hosts can hide and restore', async () => {
-    await assertFails(db(live, 'alice').ref(`${G}/hidden/p1`).set(true));
-    await assertFails(db(live, 'alice').ref(`${G}/restored/p1`).set(true));
-    await seed(live, { [`${G}/hosts/host1`]: PIN });
+  it('signed-in users can hide, un-hide and restore', async () => {
     const h = db(live, 'host1');
     await assertSucceeds(h.ref(`${G}/hidden/p1`).set(true));
     await assertSucceeds(h.ref(`${G}/hidden/p1`).remove());
     await assertSucceeds(h.ref(`${G}/restored/p1`).set(true));
   });
-  it('hidden only accepts true', async () => {
-    await seed(live, { [`${G}/hosts/host1`]: PIN });
+  it('the host view\'s HIDE and RESTORE multi-path updates work', async () => {
+    const h = db(live, 'host1');
+    await assertSucceeds(h.ref(G).update({ 'hidden/p1': true, 'restored/p1': null }));
+    await assertSucceeds(h.ref(G).update({ 'hidden/p1': null, 'restored/p1': true }));
+  });
+  it('signed-out visitors cannot hide or restore', async () => {
+    await assertFails(db(live).ref(`${G}/hidden/p1`).set(true));
+    await assertFails(db(live).ref(`${G}/restored/p1`).set(true));
+  });
+  it('hidden and restored only accept true', async () => {
     await assertFails(db(live, 'host1').ref(`${G}/hidden/p1`).set('x'));
+    await assertFails(db(live, 'host1').ref(`${G}/restored/p1`).set(false));
   });
-  it('flags are readable by hosts only, and writable by nobody', async () => {
-    await seed(live, { [`${G}/hosts/host1`]: PIN, [`${G}/flags/p1`]: { reason: 'word' } });
+  it('flags are readable when signed in, and writable by nobody', async () => {
+    await seed(live, { [`${G}/flags/p1`]: { ts: 1 } });
     await assertSucceeds(db(live, 'host1').ref(`${G}/flags`).get());
-    await assertFails(db(live, 'alice').ref(`${G}/flags`).get());
-    await assertFails(db(live, 'host1').ref(`${G}/flags/p2`).set({ reason: 'x' }));
+    await assertFails(db(live).ref(`${G}/flags`).get());
+    await assertFails(db(live, 'host1').ref(`${G}/flags/p2`).set({ ts: 2 }));
   });
-  it('scrubbed is server-only: no client, host or player can write it', async () => {
-    await seed(live, { [`${G}/hosts/host1`]: PIN });
+  it('scrubbed is server-only: no client can write it', async () => {
     await assertFails(db(live, 'alice').ref(`${G}/scrubbed/p1`).set(true));
     await assertFails(db(live, 'host1').ref(`${G}/scrubbed/p1`).set(true));
     await assertSucceeds(db(live, 'alice').ref(`${G}/scrubbed`).get());
   });
+  it('has no host registry', async () => { await assertFails(db(live, 'host1').ref(`${G}/hosts/host1`).set('anything')); });
 });

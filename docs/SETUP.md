@@ -23,24 +23,18 @@ Build > **Authentication** > **Get started** > **Sign-in method** > **Anonymous*
 Project settings > **Your apps** > **</>** > nickname `Prediction Engine web` (no Hosting).
 Copy `apiKey`, `authDomain`, `projectId`, `appId` (not secret).
 
-## 6. Host PIN
-8+ characters, no spaces, quotes or backslashes. Keep it in your password manager:
-```bash
-openssl rand -base64 18 | tr -d '/+=\n'
-```
-
-## 7. Tell Claude
-Send the project ID, database URL and the four config values. Not the PIN.
+## 6. Tell Claude
+Send the project ID, database URL and the four config values.
 Claude adds `.firebaserc` and asks before deploying the rules and Functions.
 
-## 8. GitHub + Netlify (new site for the game)
+## 7. GitHub + Netlify (new site for the game)
 1. Empty private GitHub repo `humain-prediction-engine`; tell Claude the URL (Claude asks before pushing).
 2. Netlify > **Add new site** > import that repo. Build `npm run build`, publish `dist`.
 3. Environment variables (all scopes): `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
    `VITE_FIREBASE_DATABASE_URL`, `VITE_FIREBASE_APP_ID`, `VITE_GAME_ID`.
    (App Check is left off for the first event: no `VITE_APPCHECK_SITE_KEY`.)
 
-## 9. humain.au rule (only you apply this; Claude does not touch the main site)
+## 8. humain.au rule (only you apply this; Claude does not touch the main site)
 In the humain.au site's `netlify.toml`, with `GAME-SITE` the game site's Netlify name:
 ```toml
 [[redirects]]
@@ -56,3 +50,6 @@ In the humain.au site's `netlify.toml`, with `GAME-SITE` the game site's Netlify
   force = true
 ```
 Don't link to the page from the main site's navigation; the QR code is the entry point.
+
+## Host view
+There is no host PIN. Anyone who opens `#host` on the game's address can hide and restore predictions, so keep the address unlinked (the QR code is the only entry point).

@@ -75,16 +75,10 @@
           }
         },
 
-        "hosts": {
-          "$uid": {
-            ".write": "auth != null && auth.uid === $uid && newData.val() === '__HOST_PIN__'"
-          }
-        },
-
         "hidden": {
           ".read": "auth != null",
           "$pred": {
-            ".write": "auth != null && root.child('games').child($game).child('hosts').child(auth.uid).exists()",
+            ".write": "auth != null",
             ".validate": "newData.val() === true"
           }
         },
@@ -92,13 +86,13 @@
         "restored": {
           ".read": "auth != null",
           "$pred": {
-            ".write": "auth != null && root.child('games').child($game).child('hosts').child(auth.uid).exists()",
+            ".write": "auth != null",
             ".validate": "newData.val() === true"
           }
         },
 
         "flags": {
-          ".read": "auth != null && root.child('games').child($game).child('hosts').child(auth.uid).exists()",
+          ".read": "auth != null",
           ".write": false
         },
 
