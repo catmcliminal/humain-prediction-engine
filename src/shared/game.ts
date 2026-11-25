@@ -37,6 +37,7 @@ export function derive(s: GameState, opts: DeriveOptions = {}) {
   const scores: Record<string, number> = {};
   for (const p of preds) scores[p.pid] = (scores[p.pid] ?? 0) + p.points;
   const board = Object.entries(s.players)
+    .filter(([, pl]) => !(opts.isFlagged && opts.isFlagged(pl.name))) // a flagged callsign never shows until the server removes it
     .map(([pid, pl]) => ({ pid, ...pl, score: scores[pid] ?? 0 }))
     .sort((a, b) => b.score - a.score || (a.ts ?? 0) - (b.ts ?? 0)); // ties: earlier join ranks higher
   return { preds, board, scores };

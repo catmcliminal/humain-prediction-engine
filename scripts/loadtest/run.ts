@@ -18,8 +18,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { CustomProvider, initializeAppCheck } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-import { connectDatabaseEmulator, getDatabase, onChildAdded, onValue, push, ref, remove, serverTimestamp, set, update, type Database } from 'firebase/database';
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
+import { connectDatabaseEmulator, get, getDatabase, onChildAdded, onValue, push, ref, remove, serverTimestamp, set, update, type Database } from 'firebase/database';
 import { MAX_PREDICTIONS_PER_PLAYER, POST_INTERVAL_MS } from '../../src/shared/constants';
 import { makeFlagger } from '../../src/shared/flagger';
 import flagList from '../../src/shared/flagwords.json';
@@ -47,7 +46,6 @@ const cfg = emulator
       apiKey: env.VITE_FIREBASE_API_KEY, authDomain: env.VITE_FIREBASE_AUTH_DOMAIN, projectId: env.VITE_FIREBASE_PROJECT_ID,
       databaseURL: env.VITE_FIREBASE_DATABASE_URL, appId: env.VITE_FIREBASE_APP_ID,
     };
-const REGION = emulator ? 'us-central1' : 'asia-southeast1';
 const PATHS = ['players', 'predictions', 'votes', 'ratings', 'downs', 'hidden', 'scrubbed', 'restored'] as const;
 const isFlagged = makeFlagger(flagList as FlagList);
 
@@ -95,23 +93,33 @@ async function connect(name: string, uidHint: string): Promise<Client> {
   }
   const auth = getAuth(app);
   const db = getDatabase(app);
-  const fns = getFunctions(app, REGION);
   if (emulator) {
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
     connectDatabaseEmulator(db, '127.0.0.1', 9000);
-    connectFunctionsEmulator(fns, '127.0.0.1', 5001);
   }
   const cred = emulator ? await signInAnonymously(auth) : await signInWithCustomToken(auth, await minter!(uidHint));
-  const call = httpsCallable(fns, 'join');
   const uid = cred.user.uid;
+  // Same flow as a phone: write the callsign, then wait for the onPlayerJoined Function's verdict.
+  const join = async (n: string, c: string) => {
+    await update(ref(db, `games/${GAME}/players/${uid}`), { name: n, color: c, ts: serverTimestamp() });
+    const t0 = Date.now();
+    while (Date.now() - t0 < 20_000) {
+      const v = (await get(ref(db, `games/${GAME}/joins/${uid}`))).val();
+      if (v?.ok) return;
+      if (v?.rejected) throw new Error(v.rejected);
+      await sleep(200);
+    }
+    throw new Error('join timed out');
+  };
   if (DIRECT_JOIN) {
+    // Emulator only: skip the Functions emulator (slow under many joins) and approve the player with the Admin SDK.
     const { initializeApp: initAdmin, getApps } = await import('firebase-admin/app');
     const { getDatabase: adminDb } = await import('firebase-admin/database');
     process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
     const aa = getApps().find((x) => x.name === 'lt-direct') ?? initAdmin({ projectId: cfg.projectId, databaseURL: cfg.databaseURL }, 'lt-direct');
-    return { app, db, uid, join: (n, c) => adminDb(aa).ref(`games/${GAME}/players/${uid}`).update({ name: n, color: c, ts: Date.now() }) };
+    return { app, db, uid, join: async (n, c) => { await adminDb(aa).ref(`games/${GAME}`).update({ [`players/${uid}`]: { name: n, color: c, ts: Date.now() }, [`joins/${uid}`]: { ok: true, ts: Date.now() } }); } };
   }
-  return { app, db, uid, join: (n, c) => call({ game: GAME, name: n, color: c }) };
+  return { app, db, uid, join };
 }
 const R = (db: Database, p: string) => ref(db, `games/${GAME}/${p}`);
 
@@ -229,7 +237,7 @@ async function main() {
   console.log('\n===== RESULT =====');
   console.log(`players joined      ${joined}/${PLAYERS}`);
   console.log(`actions             ${JSON.stringify(counts)}`);
-  console.log(`join (callable)     ${f(summarize(lat.join))}`);
+  console.log(`join (approval)     ${f(summarize(lat.join))}`);
   console.log(`vote -> screen      ${f(report.voteToScreen)}   (criterion: p95 < ${CRITERIA.voteToScreenP95Ms} ms)`);
   console.log(`fire -> screen      ${f(report.fireToScreen)}`);
   console.log(`write ack (fire)    ${f(summarize(lat.fireAck))}`);

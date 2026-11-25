@@ -6,9 +6,18 @@
         "players": {
           ".read": "auth != null",
           "$uid": {
-            "name":  { ".write": false, ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 12" },
-            "color": { ".write": false, ".validate": "newData.isString() && newData.val().matches(/#[0-9a-fA-F]{6}/)" },
-            "ts":    { ".write": false },
+            "name": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && now < __FREEZE_AT__",
+              ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 12 && !newData.val().matches(/(.|\\n)*[^A-Z0-9_. \\-](.|\\n)*/)"
+            },
+            "color": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && now < __FREEZE_AT__",
+              ".validate": "newData.isString() && newData.val().length === 7 && newData.val().matches(/#[0-9a-fA-F]{6}/)"
+            },
+            "ts": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && now < __FREEZE_AT__",
+              ".validate": "newData.isNumber() && newData.val() === now"
+            },
             "lastPost": {
               ".write": "auth != null && auth.uid === $uid && now < __FREEZE_AT__",
               ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || data.val() <= now - 15000)"
@@ -26,7 +35,7 @@
           ".indexOn": ["ts", "pid"],
           "$id": {
             ".write": "auth != null && !data.exists() && newData.exists() && newData.child('pid').val() === auth.uid && now < __FREEZE_AT__",
-            ".validate": "newData.hasChildren(['pid', 'text', 'tag', 'ts']) && newData.child('pid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length >= 8 && newData.child('text').val().length <= 140 && !newData.child('text').val().toLowerCase().matches(/(.|\\n)*(https?:|www\\.|:\\/\\/)(.|\\n)*|(.|\\n)*[a-z0-9]\\.(com|net|org|au|io|ai|co|app|dev|xyz|me|ly|gg|tv|to|uk|nz|us|info|biz)([^a-z0-9](.|\\n)*)?/) && newData.child('tag').isNumber() && newData.child('tag').val() >= 1 && newData.child('tag').val() <= 5 && newData.child('tag').val() % 1 === 0 && newData.child('ts').val() === now && root.child('games').child($game).child('players').child(auth.uid).child('name').exists() && newData.parent().parent().child('players').child(auth.uid).child('lastPost').val() === now && (!root.child('games').child($game).child('players').child(auth.uid).child('lastPost').exists() || root.child('games').child($game).child('players').child(auth.uid).child('lastPost').val() <= now - 15000) && newData.parent().parent().child('players').child(auth.uid).child('count').val() === (root.child('games').child($game).child('players').child(auth.uid).child('count').exists() ? root.child('games').child($game).child('players').child(auth.uid).child('count').val() + 1 : 1) && newData.parent().parent().child('players').child(auth.uid).child('count').val() <= 10",
+            ".validate": "newData.hasChildren(['pid', 'text', 'tag', 'ts']) && newData.child('pid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length >= 8 && newData.child('text').val().length <= 140 && !newData.child('text').val().toLowerCase().matches(/(.|\\n)*(https?:|www\\.|:\\/\\/)(.|\\n)*|(.|\\n)*[a-z0-9]\\.(com|net|org|au|io|ai|co|app|dev|xyz|me|ly|gg|tv|to|uk|nz|us|info|biz)([^a-z0-9](.|\\n)*)?/) && newData.child('tag').isNumber() && newData.child('tag').val() >= 1 && newData.child('tag').val() <= 5 && newData.child('tag').val() % 1 === 0 && newData.child('ts').val() === now && root.child('games').child($game).child('joins').child(auth.uid).child('ok').exists() && newData.parent().parent().child('players').child(auth.uid).child('lastPost').val() === now && (!root.child('games').child($game).child('players').child(auth.uid).child('lastPost').exists() || root.child('games').child($game).child('players').child(auth.uid).child('lastPost').val() <= now - 15000) && newData.parent().parent().child('players').child(auth.uid).child('count').val() === (root.child('games').child($game).child('players').child(auth.uid).child('count').exists() ? root.child('games').child($game).child('players').child(auth.uid).child('count').val() + 1 : 1) && newData.parent().parent().child('players').child(auth.uid).child('count').val() <= 10",
             "pid":  { ".validate": "newData.isString()" },
             "text": { ".validate": "newData.isString()" },
             "tag":  { ".validate": "newData.isNumber()" },
@@ -38,7 +47,7 @@
         "votes": {
           ".read": "auth != null",
           "$pred": { "$uid": {
-            ".write": "auth != null && auth.uid === $uid && now < __FREEZE_AT__ && root.child('games').child($game).child('players').child($uid).child('name').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid",
+            ".write": "auth != null && auth.uid === $uid && now < __FREEZE_AT__ && root.child('games').child($game).child('joins').child($uid).child('ok').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid",
             ".validate": "newData.val() === true"
           } }
         },
@@ -46,7 +55,7 @@
         "downs": {
           ".read": "auth != null",
           "$pred": { "$uid": {
-            ".write": "auth != null && auth.uid === $uid && now < __FREEZE_AT__ && root.child('games').child($game).child('players').child($uid).child('name').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid",
+            ".write": "auth != null && auth.uid === $uid && now < __FREEZE_AT__ && root.child('games').child($game).child('joins').child($uid).child('ok').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid",
             ".validate": "newData.val() === true"
           } }
         },
@@ -54,9 +63,16 @@
         "ratings": {
           ".read": "auth != null",
           "$pred": { "$uid": {
-            ".write": "auth != null && auth.uid === $uid && newData.exists() && now < __FREEZE_AT__ && root.child('games').child($game).child('players').child($uid).child('name').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid",
+            ".write": "auth != null && auth.uid === $uid && newData.exists() && now < __FREEZE_AT__ && root.child('games').child($game).child('joins').child($uid).child('ok').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid",
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 6 && newData.val() % 1 === 0"
           } }
+        },
+
+        "joins": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": false
+          }
         },
 
         "hosts": {

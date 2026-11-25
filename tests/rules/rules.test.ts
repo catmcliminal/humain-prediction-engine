@@ -12,7 +12,10 @@ let over: RulesTestEnvironment; // freeze is in the past
 const db = (e: RulesTestEnvironment, uid?: string) => (uid ? e.authenticatedContext(uid) : e.unauthenticatedContext()).database();
 const seed = (e: RulesTestEnvironment, data: Record<string, unknown>) =>
   e.withSecurityRulesDisabled(async (ctx) => { await ctx.database().ref().update(data); });
-const joined = (...uids: string[]) => Object.fromEntries(uids.map((u) => [`${G}/players/${u}`, { name: u.toUpperCase(), color: '#39ff14', ts: 1 }]));
+const joined = (...uids: string[]) => Object.fromEntries(uids.flatMap((u) => [
+  [`${G}/players/${u}`, { name: u.toUpperCase(), color: '#39ff14', ts: 1 }],
+  [`${G}/joins/${u}`, { ok: true }],
+]));
 const post = (d: ReturnType<typeof db>, uid: string, id: string, fields: Record<string, unknown> = {}, count: number | null = 1) =>
   d.ref(G).update({
     [`predictions/${id}`]: { pid: uid, text: 'a perfectly valid prediction', tag: 3, ts: TS, ...fields },
@@ -43,12 +46,11 @@ describe('reads', () => {
 
 describe('players', () => {
   beforeEach(() => seed(live, joined('alice', 'bob')));
-  it('clients cannot write or change callsign, colour or join time (only the join Function can)', async () => {
+  it('callsign, colour and join time cannot be changed once set', async () => {
     const a = db(live, 'alice');
     await assertFails(a.ref(`${G}/players/alice/name`).set('HACKED'));
     await assertFails(a.ref(`${G}/players/alice/color`).set('#ffffff'));
     await assertFails(a.ref(`${G}/players/alice/ts`).set(5));
-    await assertFails(a.ref(`${G}/players/newbie`).set({ name: 'NEWBIE', color: '#39ff14' }));
     await assertFails(a.ref(`${G}/players/alice`).set({ name: 'ALICE', color: '#39ff14' }));
   });
   it('lastPost must be the server time and belong to the player', async () => {
@@ -65,6 +67,39 @@ describe('players', () => {
     await assertSucceeds(a.ref(`${G}/players/alice/count`).set(6));
   });
   it('rejects unknown fields', async () => { await assertFails(db(live, 'alice').ref(`${G}/players/alice/admin`).set(true)); });
+});
+
+describe('joining (client writes the callsign, a Function approves it)', () => {
+  const join = (d: ReturnType<typeof db>, uid: string, f: Record<string, unknown> = {}) =>
+    d.ref(`${G}/players/${uid}`).update({ name: 'ACE PILOT', color: '#39ff14', ts: TS, ...f });
+  it('lets a player create their own record once', async () => {
+    await assertSucceeds(join(db(live, 'carol'), 'carol'));
+    await assertFails(join(db(live, 'carol'), 'carol', { name: 'RENAMED' })); // already set
+  });
+  it('cannot create a record for someone else', async () => { await assertFails(join(db(live, 'mallory'), 'carol')); });
+  it('refuses signed-out users', async () => { await assertFails(join(db(live), 'carol')); });
+  it.each([['too short', 'A'], ['too long', 'ABCDEFGHIJKLM'], ['lowercase', 'ace'], ['symbols', 'ACE<script>'], ['empty', ''], ['with a newline', 'AB\nCD']])('refuses a callsign that is %s', async (_n, name) => {
+    await assertFails(join(db(live, 'carol'), 'carol', { name }));
+  });
+  it('accepts the allowed characters', async () => { await assertSucceeds(join(db(live, 'carol'), 'carol', { name: 'A_B.C-1 2' })); });
+  it('refuses a bad colour, a fake join time and extra fields', async () => {
+    await assertFails(join(db(live, 'carol'), 'carol', { color: 'green' }));
+    await assertFails(join(db(live, 'carol'), 'carol', { color: '#39ff14zzz' }));
+    await assertFails(join(db(live, 'carol'), 'carol', { ts: 5 }));
+    await assertFails(join(db(live, 'carol'), 'carol', { admin: true }));
+  });
+  it('is closed after the freeze', async () => { await assertFails(join(db(over, 'carol'), 'carol')); });
+  it('cannot post, vote or rate until the Function has approved the callsign', async () => {
+    await seed(live, { [`${G}/players/carol`]: { name: 'CAROL', color: '#39ff14', ts: 1 } }); // no joins/carol/ok
+    await assertFails(post(db(live, 'carol'), 'carol', 'p1'));
+  });
+  it('the verdict path is readable only by its owner and writable by no client', async () => {
+    await seed(live, { [`${G}/joins/carol`]: { ok: true } });
+    await assertSucceeds(db(live, 'carol').ref(`${G}/joins/carol`).get());
+    await assertFails(db(live, 'bob').ref(`${G}/joins/carol`).get());
+    await assertFails(db(live, 'carol').ref(`${G}/joins/carol`).set({ ok: true }));
+    await assertFails(db(live, 'bob').ref(`${G}/joins/bob`).set({ ok: true }));
+  });
 });
 
 describe('predictions', () => {

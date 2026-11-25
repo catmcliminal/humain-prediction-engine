@@ -168,3 +168,13 @@ describe('flag pre-hide and host restore', () => {
     expect(derive(s, { isFlagged }).preds).toHaveLength(1);
   });
 });
+
+describe('flagged callsigns', () => {
+  it('never appear on the leaderboard while a flagged name is awaiting removal', () => {
+    const s = emptyState();
+    s.players = { a: { name: 'ACE', color: '#fff', ts: 1 }, b: { name: 'BADWORD', color: '#fff', ts: 2 } };
+    const board = derive(s, { isFlagged: (t) => String(t) === 'BADWORD' }).board;
+    expect(board.map((b) => b.pid)).toEqual(['a']);
+    expect(derive(s).board.map((b) => b.pid)).toEqual(['a', 'b']);
+  });
+});

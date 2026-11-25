@@ -8,12 +8,6 @@ import flagList from '../../src/shared/flagwords.json';
 
 export const isFlagged = makeFlagger(flagList as FlagList);
 
-export class JoinError extends Error {
-  constructor(public code: 'invalid-argument' | 'failed-precondition', message: string) {
-    super(message);
-  }
-}
-
 const rec = <T>(v: unknown): Record<string, T> => (v && typeof v === 'object' ? (v as Record<string, T>) : {});
 
 /** Reads games/{game} with Admin privileges and maps it to the shared GameState. */
@@ -36,22 +30,23 @@ export async function flagPrediction(db: Database, game: string, id: string, tex
   return true;
 }
 
-/** Join: callsign flag check (same matcher as predictions) and freeze check, then Admin write of name/color/ts. */
-export async function joinPlayer(
-  db: Database, game: string, uid: string, rawName: unknown, rawColor: unknown, now = Date.now(),
-) {
-  if (now >= FREEZE_AT) throw new JoinError('failed-precondition', 'GAME OVER');
-  const name = cleanCallsign(typeof rawName === 'string' ? rawName : '');
-  if (!callsignOk(name)) throw new JoinError('invalid-argument', 'CALLSIGN MUST BE 2-12 CHARACTERS');
-  if (isFlagged(name)) throw new JoinError('invalid-argument', CALLSIGN_REJECTED);
-  const color = typeof rawColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
-  if (!color) throw new JoinError('invalid-argument', 'BAD COLOUR');
-
-  const ref = db.ref(`games/${game}/players/${uid}`);
-  const existing = (await ref.get()).val();
-  if (existing?.name) return { name: existing.name as string, color: existing.color as string, created: false };
-  await ref.update({ name, color, ts: now });
-  return { name, color, created: true };
+/**
+ * Join approval. Phones write their own callsign (the rules check its shape and that it is set only once);
+ * this runs when it appears. A flagged callsign is removed and the phone is told why, an acceptable one is
+ * marked ok. Players cannot post, vote or rate until joins/{uid}/ok exists (the rules enforce that).
+ */
+export async function approvePlayer(db: Database, game: string, uid: string, now = Date.now()): Promise<'ok' | 'rejected' | 'none'> {
+  const p = (await db.ref(`games/${game}/players/${uid}`).get()).val();
+  if (typeof p?.name !== 'string') return 'none';
+  if (!callsignOk(p.name) || cleanCallsign(p.name) !== p.name || isFlagged(p.name)) {
+    await db.ref(`games/${game}`).update({
+      [`players/${uid}/name`]: null, [`players/${uid}/color`]: null, [`players/${uid}/ts`]: null,
+      [`joins/${uid}`]: { rejected: CALLSIGN_REJECTED, ts: now },
+    });
+    return 'rejected';
+  }
+  await db.ref(`games/${game}/joins/${uid}`).set({ ok: true, ts: now });
+  return 'ok';
 }
 
 /**

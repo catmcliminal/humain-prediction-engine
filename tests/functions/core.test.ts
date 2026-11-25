@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { initializeApp } from 'firebase-admin/app';
 import { getDatabase, type Database } from 'firebase-admin/database';
 import { CALLSIGN_REJECTED, FREEZE_AT, RAID } from '../../src/shared/constants';
-import { activeGame, flagPrediction, joinPlayer, JoinError, scrubPass } from '../../functions/src/core';
+import { activeGame, approvePlayer, flagPrediction, scrubPass } from '../../functions/src/core';
 
 process.env.FIREBASE_DATABASE_EMULATOR_HOST = '127.0.0.1:9000';
 let db: Database;
@@ -48,41 +48,42 @@ describe('flagPrediction', () => {
   it('ignores non-string text', async () => { expect(await flagPrediction(db, G, 'd', undefined, NOW)).toBe(false); });
 });
 
-describe('joinPlayer', () => {
-  it('writes name, colour and join time', async () => {
-    const r = await joinPlayer(db, G, 'u1', ' ace_pilot ', '#39ff14', NOW);
-    expect(r).toEqual({ name: 'ACE_PILOT', color: '#39ff14', created: true });
-    expect(await get('players/u1')).toEqual({ name: 'ACE_PILOT', color: '#39ff14', ts: NOW });
+describe('approvePlayer', () => {
+  const put = (uid: string, name: string) => db.ref(`games/${G}/players/${uid}`).set({ name, color: '#39ff14', ts: NOW });
+  it('approves an acceptable callsign', async () => {
+    await put('u1', 'ACE PILOT');
+    expect(await approvePlayer(db, G, 'u1', NOW)).toBe('ok');
+    expect(await get('joins/u1')).toEqual({ ok: true, ts: NOW });
+    expect(await get('players/u1/name')).toBe('ACE PILOT');
   });
-  it('rejects a flagged callsign with the exact message and writes nothing', async () => {
-    const err = await joinPlayer(db, G, 'u1', 'N1GGER', '#39ff14', NOW).catch((e) => e);
-    expect(err).toBeInstanceOf(JoinError);
-    expect(err.message).toBe(CALLSIGN_REJECTED);
-    expect(err.code).toBe('invalid-argument');
-    expect(await get('players')).toBeNull();
+  it('rejects a flagged callsign, removes it, and says why in the exact words', async () => {
+    await put('u1', 'N1GGER');
+    expect(await approvePlayer(db, G, 'u1', NOW)).toBe('rejected');
+    expect(await get('joins/u1')).toEqual({ rejected: CALLSIGN_REJECTED, ts: NOW });
+    expect(await get('players/u1')).toBeNull();
   });
-  it('rejects spaced-out flagged callsigns', async () => {
-    await expect(joinPlayer(db, G, 'u1', 'N I G G E R', '#39ff14', NOW)).rejects.toThrow(CALLSIGN_REJECTED);
+  it('rejects spaced-out and symbol-swapped callsigns', async () => {
+    await put('u1', 'N I G G E R');
+    expect(await approvePlayer(db, G, 'u1', NOW)).toBe('rejected');
+    await put('u2', 'K1KE');
+    expect(await approvePlayer(db, G, 'u2', NOW)).toBe('rejected');
   });
-  it('rejects too-short, empty and non-string callsigns and bad colours', async () => {
-    await expect(joinPlayer(db, G, 'u1', 'A', '#39ff14', NOW)).rejects.toBeInstanceOf(JoinError);
-    await expect(joinPlayer(db, G, 'u1', '!!!', '#39ff14', NOW)).rejects.toBeInstanceOf(JoinError);
-    await expect(joinPlayer(db, G, 'u1', 42, '#39ff14', NOW)).rejects.toBeInstanceOf(JoinError);
-    await expect(joinPlayer(db, G, 'u1', 'ACE', 'red', NOW)).rejects.toBeInstanceOf(JoinError);
-    await expect(joinPlayer(db, G, 'u1', 'ACE', undefined, NOW)).rejects.toBeInstanceOf(JoinError);
-    expect(await get('players')).toBeNull();
+  it('keeps the rest of the player record (shots fired) when it rejects a name', async () => {
+    await db.ref(`games/${G}/players/u1`).set({ name: 'N1GGER', color: '#39ff14', ts: NOW, count: 2, lastPost: NOW });
+    await approvePlayer(db, G, 'u1', NOW);
+    expect(await get('players/u1')).toEqual({ count: 2, lastPost: NOW });
   });
-  it('is closed after the freeze', async () => {
-    const err = await joinPlayer(db, G, 'u1', 'ACE', '#39ff14', FREEZE_AT).catch((e) => e);
-    expect(err.code).toBe('failed-precondition');
-    expect(await get('players')).toBeNull();
+  it('rejects a malformed callsign that slipped past the client', async () => {
+    await put('u1', 'ace');
+    expect(await approvePlayer(db, G, 'u1', NOW)).toBe('rejected');
   });
-  it('is idempotent and never renames or resets an existing player', async () => {
-    await joinPlayer(db, G, 'u1', 'ACE', '#39ff14', NOW);
-    await db.ref(`games/${G}/players/u1`).update({ lastPost: NOW, count: 3 });
-    const r = await joinPlayer(db, G, 'u1', 'OTHER', '#ff2bd6', NOW + 1000);
-    expect(r).toEqual({ name: 'ACE', color: '#39ff14', created: false });
-    expect(await get('players/u1')).toEqual({ name: 'ACE', color: '#39ff14', ts: NOW, lastPost: NOW, count: 3 });
+  it('does nothing when there is no callsign', async () => { expect(await approvePlayer(db, G, 'nobody', NOW)).toBe('none'); });
+  it('a retry with a clean name after a rejection is approved and replaces the verdict', async () => {
+    await put('u1', 'N1GGER');
+    await approvePlayer(db, G, 'u1', NOW);
+    await put('u1', 'ACE');
+    expect(await approvePlayer(db, G, 'u1', NOW + 1000)).toBe('ok');
+    expect(await get('joins/u1')).toEqual({ ok: true, ts: NOW + 1000 });
   });
 });
 

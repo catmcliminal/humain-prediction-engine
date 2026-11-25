@@ -10,34 +10,16 @@ const wait = async (fn: () => Promise<boolean>, ms = 15000) => {
   while (Date.now() < end) { if (await fn()) return true; await new Promise((r) => setTimeout(r, 250)); }
   return false;
 };
-async function call(token: string, data: unknown) {
-  const r = await fetch(`http://127.0.0.1:5001/${PROJECT}/us-central1/join`, {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ data }),
-  });
-  return { status: r.status, body: (await r.json()) as any };
-}
-async function signIn() {
-  const r = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=x', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-  const j: any = await r.json();
-  return { token: j.idToken as string, uid: j.localId as string };
-}
-
 describe('deployed function wrappers (emulated)', () => {
-  it('join accepts a clean callsign and writes the player', async () => {
-    const { token, uid } = await signIn();
-    const r = await call(token, { game: 'e2e', name: 'ace', color: '#39ff14' });
-    expect(r.status).toBe(200);
-        expect((await admin.ref(`games/e2e/players/${uid}/name`).get()).val()).toBe('ACE');
+  it('a clean callsign is approved by the trigger', async () => {
+    await admin.ref('games/e2e/players/u1').set({ name: 'ACE', color: '#39ff14', ts: Date.now() });
+    expect(await wait(async () => (await admin.ref('games/e2e/joins/u1/ok').get()).val() === true)).toBe(true);
   });
-  it('join rejects a flagged callsign with the exact message', async () => {
-    const { token } = await signIn();
-    const r = await call(token, { game: 'e2e', name: 'N1GGER', color: '#39ff14' });
-    expect(r.status).toBe(400);
-    expect(r.body.error.message).toBe('CALLSIGN NOT ALLOWED. TRY ANOTHER.');
-  });
-  it('join refuses an unauthenticated call', async () => {
-    const r = await fetch(`http://127.0.0.1:5001/${PROJECT}/us-central1/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data: { game: 'e2e', name: 'ace', color: '#39ff14' } }) });
-    expect(r.status).toBe(401);
+  it('a flagged callsign is removed and rejected with the exact message', async () => {
+    await admin.ref('games/e2e/players/u2').set({ name: 'N1GGER', color: '#39ff14', ts: Date.now() });
+    expect(await wait(async () => (await admin.ref('games/e2e/joins/u2/rejected').get()).exists())).toBe(true);
+    expect((await admin.ref('games/e2e/joins/u2/rejected').get()).val()).toBe('CALLSIGN NOT ALLOWED. TRY ANOTHER.');
+    expect((await admin.ref('games/e2e/players/u2/name').get()).exists()).toBe(false);
   });
   it('a new flagged prediction is hidden and flagged by the trigger; a clean one is not', async () => {
     await admin.ref('games/e2e/predictions').update({

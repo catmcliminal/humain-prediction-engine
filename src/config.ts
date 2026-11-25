@@ -17,8 +17,6 @@ export const config = {
       },
   appCheckSiteKey: env.VITE_APPCHECK_SITE_KEY as string | undefined,
   appCheckDebug: env.VITE_APPCHECK_DEBUG === '1',
-  /** Database-triggered Functions must sit in the database's region; the emulator assumes us-central1. */
-  functionsRegion: emulator ? 'us-central1' : 'asia-southeast1',
   /** Phone gives up waiting for the first data after this long and offers RETRY. */
   connectTimeoutMs: 10_000,
 };

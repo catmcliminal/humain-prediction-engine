@@ -1,10 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
-import { connectAuthEmulator, getAuth, signInAnonymously } from 'firebase/auth';
+import { connectAuthEmulator, getAuth, signInAnonymously, signOut } from 'firebase/auth';
 import {
   connectDatabaseEmulator, get, getDatabase, onValue, push, ref, remove, serverTimestamp, set, update, type Database,
 } from 'firebase/database';
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { config } from '../config';
 import { FREEZE_AT } from '../shared/constants';
 import { emptyState, type GameState } from '../shared/types';
@@ -39,9 +38,10 @@ export class Store {
   private db!: Database;
   private base = `games/${config.gameId}`;
   private subs: Listener[] = [];
-  private seen = new Set<Path>();
+  private seen = new Set<string>();
+  /** Server verdict on this player's callsign (written by the onPlayerJoined Function). */
+  joinVerdict: { ok?: boolean; rejected?: string; ts?: number } | null = null;
   private t: ReturnType<typeof setTimeout> | undefined;
-  private fns!: ReturnType<typeof getFunctions>;
 
   on(fn: Listener) { this.subs.push(fn); }
   private emit() {
@@ -65,11 +65,15 @@ export class Store {
     }
     const auth = getAuth(app);
     this.db = getDatabase(app);
-    this.fns = getFunctions(app, config.functionsRegion);
     if (config.useEmulator) {
       connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
       connectDatabaseEmulator(this.db, '127.0.0.1', 9000);
-      connectFunctionsEmulator(this.fns, '127.0.0.1', 5001);
+    }
+    // A remembered anonymous user can be gone server-side (cleared by an admin, or a reset emulator). If its token
+    // cannot be refreshed, start over as a new player rather than hanging on "CONNECTING".
+    await auth.authStateReady();
+    if (auth.currentUser) {
+      try { await auth.currentUser.getIdToken(true); } catch { await signOut(auth); }
     }
     this.me = (await signInAnonymously(auth)).user.uid;
 
@@ -79,13 +83,19 @@ export class Store {
       this.emit();
     });
     onValue(ref(this.db, '.info/serverTimeOffset'), (s) => { this.offset = Number(s.val()) || 0; this.emit(); });
+    onValue(ref(this.db, `${this.base}/joins/${this.me}`), (s) => {
+      this.joinVerdict = s.val();
+      this.seen.add('joins');
+      this.ready = this.seen.size === PATHS.length + 1;
+      this.emit();
+    }, (e) => { console.error(e); this.fatal = 'CONNECTION ERROR'; this.emit(); });
     for (const p of PATHS) {
       onValue(
         ref(this.db, `${this.base}/${p}`),
         (s) => {
           (this.state as unknown as Record<string, unknown>)[KEY[p]] = s.val() ?? {};
           this.seen.add(p);
-          this.ready = this.seen.size === PATHS.length;
+          this.ready = this.seen.size === PATHS.length + 1;
           this.emit();
         },
         (e) => { console.error(e); this.fatal = 'CONNECTION ERROR'; this.emit(); },
@@ -124,15 +134,24 @@ export class Store {
 
   private r(p: string) { return ref(this.db, `${this.base}/${p}`); }
 
-  /** The join Function checks the callsign against the flag list and the freeze, then writes the player. */
+  /**
+   * Join: the phone writes its own callsign, colour and join time (the rules check their shape and that they are
+   * set only once). The onPlayerJoined Function then checks the callsign against the flag list and writes the
+   * verdict to joins/{me}. A flagged callsign is removed again and the player may try another.
+   */
   async join(name: string, color: string) {
-    try {
-      await httpsCallable(this.fns, 'join')({ game: config.gameId, name, color });
-    } catch (e) {
-      const code = (e as { code?: string }).code ?? '';
-      if (code.endsWith('invalid-argument')) throw new JoinRejected((e as Error).message.replace(/\s*\[\d+\]$/, '')); // some runtimes append the HTTP status
-      throw e;
+    const before = this.joinVerdict?.ts;
+    await update(this.r(`players/${this.me}`), { name, color, ts: serverTimestamp() });
+    const end = Date.now() + 20_000;
+    while (Date.now() < end) {
+      const v = this.joinVerdict;
+      if (v && v.ts !== before) {
+        if (v.ok) return;
+        throw new JoinRejected(v.rejected ?? 'CALLSIGN NOT ALLOWED. TRY ANOTHER.');
+      }
+      await new Promise((r) => setTimeout(r, 150));
     }
+    throw new Error('join timed out');
   }
 
   /** One multi-path update: the prediction, the rate-limit stamp and the +1 counter (the rules check all three). */

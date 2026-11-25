@@ -225,7 +225,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
     if (!store.ready) { if (P.mode !== 'connecting') connecting(); if (failed) connectFailed(); return; }
     clearTimeout(connectTimer);
     const me = s.players[store.me];
-    if (!me?.name) {
+    if (!me?.name || !store.joinVerdict?.ok) { // joined = callsign written AND approved by the server
       if (P.mode !== 'join') { P.mode = 'join'; join = mountJoin(root, store); }
       join?.sync();
       return;
