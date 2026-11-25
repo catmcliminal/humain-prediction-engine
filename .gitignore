@@ -9,3 +9,4 @@ database.rules.json
 functions/node_modules
 functions/lib
 !.env.example
+!.env.staging.example
