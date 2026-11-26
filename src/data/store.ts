@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth, signInAnonymously, signOut } from 'firebase/auth';
 import {
-  connectDatabaseEmulator, get, getDatabase, onValue, push, ref, remove, serverTimestamp, set, update, type Database,
+  connectDatabaseEmulator, forceWebSockets, get, getDatabase, onValue, push, ref, remove, serverTimestamp, set, update, type Database,
 } from 'firebase/database';
 import { config } from '../config';
 import { FREEZE_AT, SEED_AUTHOR } from '../shared/constants';
@@ -65,6 +65,9 @@ export class Store {
       initializeAppCheck(app, { provider: new ReCaptchaV3Provider(config.appCheckSiteKey), isTokenAutoRefreshEnabled: true });
     }
     const auth = getAuth(app);
+    // WebSockets only. The long-polling fallback loads scripts from the database host, which humain.au's content
+    // security policy blocks, and the SDK remembers one failed socket and would then stay on that dead fallback.
+    forceWebSockets();
     this.db = getDatabase(app);
     if (config.useEmulator) {
       connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
