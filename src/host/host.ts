@@ -90,8 +90,8 @@ export function mountHost(root: HTMLElement, store: Store) {
     if (paint(quiz, quizHtml(off)) && wasOpen) quiz.querySelector('details')!.open = true;
     paintList($('#queue'), all.slice(0, shown).map((x) => ({
       id: x.id, cls: `qi${x.hidden ? ' is-hidden' : ''}${x.flagged && !x.restored ? ' is-flagged' : ''}`,
-      html: `<div class="qh">${x.p.seed ? '<span class="hchip px">SEED</span>' : ''}${x.flagged && !x.restored ? '<span class="hchip flag px">FLAGGED</span>' : ''}${x.hidden ? '<span class="hchip hid px">HIDDEN</span>' : ''}</div>
-        <p class="qt">${esc(x.p.text)}</p><div class="qf"><span class="qm">by ${esc(x.p.seed ? 'humAIn seed' : s.players[x.p.pid]?.name ?? '???')}</span>
+      html: `<div class="qh">${x.flagged && !x.restored ? '<span class="hchip flag px">FLAGGED</span>' : ''}${x.hidden ? '<span class="hchip hid px">HIDDEN</span>' : ''}</div>
+        <p class="qt">${esc(x.p.text)}</p><div class="qf"><span class="qm">by ${esc(x.p.seed ? 'humAIn' : s.players[x.p.pid]?.name ?? '???')}</span>
         <button class="act ${x.hidden ? 'restore' : 'hide'} px" data-act="${x.hidden ? 'restore' : 'hide'}" data-id="${esc(x.id)}"${off}>${x.hidden ? 'RESTORE' : 'HIDE'}</button></div>`,
     })));
     $('#qempty').hidden = all.length > 0;

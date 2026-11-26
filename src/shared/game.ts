@@ -48,7 +48,7 @@ export function board(s: GameState, isFlagged: (t: string) => boolean = () => fa
       const will = v.filter((x) => x === 'will').length, wont = v.length - will;
       const who = p.seed ? undefined : s.players[p.pid];
       return {
-        id, ...p, author: p.seed ? 'humAIn seed' : who?.name ?? '???', color: who?.color ?? '#00e5ff',
+        id, ...p, author: p.seed ? 'humAIn' : who?.name ?? '???', color: who?.color ?? '#00e5ff',
         will, wont, total: v.length, pct: v.length ? Math.round((100 * will) / v.length) : null,
         cyber: Object.keys(s.tags[id] ?? {}).length,
       };

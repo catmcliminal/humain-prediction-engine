@@ -49,7 +49,7 @@ describe('board', () => {
   it('works out percentages, seed authorship and hides moderated items', () => {
     const items = board(s);
     expect(items.map((x) => x.id)).toEqual(['p', 'q']);
-    expect(items[1]).toMatchObject({ author: 'humAIn seed', pct: 67, total: 3 });
+    expect(items[1]).toMatchObject({ author: 'humAIn', pct: 67, total: 3 });
     expect(items[0].pct).toBeNull();
     expect(topCyber(items).map((x) => x.id)).toEqual(['p']);
     expect(rising(items, 60_000).length).toBe(2);
