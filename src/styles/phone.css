@@ -14,6 +14,7 @@ h1.logo span{display:block;color:var(--m);text-shadow:0 0 10px var(--m),3px 3px 
 .march{display:flex;justify-content:center;gap:12px;margin:26px 0 22px;animation:march 1.6s steps(2) infinite}
 @keyframes march{0%,100%{transform:translateX(-8px)}50%{transform:translateX(8px)}}
 .blurb{text-align:center;color:var(--dim);font-size:24px;margin-bottom:26px}
+.blurb+.blurb{margin-top:-12px}
 .field{display:block;font-family:var(--px);font-size:10px;color:var(--c);margin:0 0 10px}
 .inp{width:100%;background:#000;border:3px solid var(--line);padding:12px;font-family:var(--tx);font-size:28px;color:var(--ink);outline:none;border-radius:0;-webkit-appearance:none}
 .inp:focus{border-color:var(--g);box-shadow:0 0 0 2px rgba(57,255,20,.25)}
