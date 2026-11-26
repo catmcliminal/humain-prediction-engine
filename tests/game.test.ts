@@ -82,12 +82,12 @@ describe('phone state', () => {
 });
 
 describe('seed predictions', () => {
-  it('load for main cards, and for reserve cards only after their reveal', () => {
+  it('load for warm-up cards, and for the rest only after their reveal', () => {
     const s = base();
-    s.cards = { l: { text: 'l', deck: 'live', order: 1 }, x: { text: 'x', deck: 'reserve', order: 1 } };
-    expect([seedDue(s, 'l'), seedDue(s, 'x')]).toEqual([true, false]);
-    s.revealed = { x: true };
-    expect(seedDue(s, 'x')).toBe(true);
+    s.cards = { a: { text: 'a', deck: 'arrival', order: 1 }, l: { text: 'l', deck: 'live', order: 1 }, x: { text: 'x', deck: 'reserve', order: 1 } };
+    expect(['a', 'l', 'x'].map((c) => seedDue(s, c))).toEqual([true, false, false]);
+    s.revealed = { l: true, x: true };
+    expect(['l', 'x'].map((c) => seedDue(s, c))).toEqual([true, true]);
   });
 });
 
@@ -130,7 +130,7 @@ describe('headline deck', () => {
   const entries = Object.entries(deck.key) as [string, { real: boolean; source?: string; seed?: string; seedText?: string; explainer: string }][];
   it('has the arrival, live and reserve cards with a source on every real one and a seed on every fake', () => {
     const decks = Object.values(deck.cards).map((c) => c.deck);
-    expect([decks.filter((d) => d === 'arrival').length, decks.filter((d) => d === 'live').length, decks.filter((d) => d === 'reserve').length]).toEqual([3, 6, 17]);
+    expect([decks.filter((d) => d === 'arrival').length, decks.filter((d) => d === 'live').length, decks.filter((d) => d === 'reserve').length]).toEqual([3, 10, 13]);
     for (const [, k] of entries) {
       if (k.real) expect(k.source).toMatch(/^https:/);
       else expect(k.seed && k.seedText).toBeTruthy();

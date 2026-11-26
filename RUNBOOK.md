@@ -31,7 +31,7 @@ These buttons change what the big screen and room phones show. Phones that joine
 | 5:00 quiz | LIVE QUIZ, then NEXT CARD | Card and 20 second countdown |
 | Each card | REVEAL | Answer on screen and phones together, % who got it right |
 | (fake cards) | | Phones ask "true by end of 2027?" Give people a moment |
-| After card 6 | RESULTS | Myth-buster top 10 |
+| After card 10 | RESULTS | Myth-buster top 10 |
 | Half two | PREDICT | Fakes appear as seed predictions; write, rate 1 to 5 (CERTAIN to UNHINGED), CYBERBONKERS |
 
 - Leaving arrival for LIVE QUIZ closes the warm-up cards and counts their scores.

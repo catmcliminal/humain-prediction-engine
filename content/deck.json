@@ -87,18 +87,18 @@
     },
     "x9": {
       "text": "Robot smashes human half-marathon record",
-      "deck": "reserve",
+      "deck": "live",
       "order": 9
     },
     "x10": {
       "text": "AI estate agent invents extra bedroom to secure property sale",
-      "deck": "reserve",
-      "order": 10
+      "deck": "live",
+      "order": 8
     },
     "x11": {
       "text": "AI lures tourists into Tasmanian wilderness with imaginary hot springs",
-      "deck": "reserve",
-      "order": 11
+      "deck": "live",
+      "order": 7
     },
     "x12": {
       "text": "Robot vacuum goes on strike after software update",
@@ -117,8 +117,8 @@
     },
     "x15": {
       "text": "Japanese hotel introduces human staff as premium paid extra",
-      "deck": "reserve",
-      "order": 15
+      "deck": "live",
+      "order": 10
     },
     "x16": {
       "text": "Billionaire launches AI clone to attend meetings about work-life balance",
