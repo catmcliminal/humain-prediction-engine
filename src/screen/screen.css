@@ -27,11 +27,11 @@
 .stage .verdict.fake b{color:var(--m)}
 .stage .verdict span{font-size:clamp(12px,1.3vw,24px);color:var(--y)}
 .stage .explain{font-size:clamp(20px,min(2.2vw,4vh),42px);max-width:30em}
-.grid{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:2vh 1.5vw;min-height:0}
-.pc{border:3px solid var(--c);background:rgba(11,4,32,.92);padding:2vh 1.4vw;display:flex;flex-direction:column;justify-content:space-between;min-height:0;overflow:hidden;animation:incoming .6s ease-out}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:2vh 1.5vw;min-height:0;overflow:hidden}
+.pc{border:3px solid var(--c);background:rgba(11,4,32,.92);padding:1.6vh 1.2vw;display:flex;flex-direction:column;justify-content:space-between;gap:1.4vh;min-height:0;overflow:hidden;animation:incoming .6s ease-out}
 @keyframes incoming{from{transform:translateY(-30px);opacity:0}}
-.pt{font-size:clamp(24px,min(2.8vw,5vh),56px);line-height:1.05;overflow:hidden;overflow-wrap:anywhere}
-.pm{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:clamp(18px,1.5vw,30px)}
+.pt{font-size:clamp(22px,min(2.2vw,4vh),44px);line-height:1.05;overflow:hidden;overflow-wrap:anywhere}
+.pm{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:clamp(16px,1.2vw,24px)}
 .pm b{font-weight:normal;color:var(--g)}
 .pm i{font-style:normal;margin-left:auto;font-size:clamp(11px,1vw,18px)}
 .side{border-left:3px solid var(--line);background:rgba(11,4,32,.75);padding:16px 18px;display:flex;flex-direction:column;gap:2.5vh;min-height:0;overflow:hidden}
