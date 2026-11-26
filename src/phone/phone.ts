@@ -1,13 +1,13 @@
 import { config } from '../config';
 import type { Store } from '../data/store';
-import { ANSWER_WINDOW_MS, FEED_PAGE, POST_INTERVAL_MS, PREDICTION_MAX } from '../shared/constants';
+import { ANSWER_WINDOW_MS, FEED_PAGE, LEVELS, POST_INTERVAL_MS, PREDICTION_MAX, RATINGS } from '../shared/constants';
 import { loadFlagger } from '../shared/flags';
 import { board, deckCards, mythBusters, newest, pointsFor, type BoardItem } from '../shared/game';
 import { cleanPrediction, predictionError } from '../shared/text';
-import type { Answer, StateName } from '../shared/types';
+import type { Answer, StateName, Vote } from '../shared/types';
 import { verdictBuzz } from '../ui/juice';
 import { SFX } from '../ui/sound';
-import { ship } from '../ui/sprites';
+import { levelColor, ship } from '../ui/sprites';
 import { paint, paintList } from '../ui/paint';
 import { announce, toast } from '../ui/toast';
 import { $, esc, vibrate } from '../ui/util';
@@ -65,7 +65,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
         <button class="big more" id="moreBtn" hidden>SHOW MORE</button>
       </div>
     </section>
-    <nav class="tabs" id="tabs" aria-label="Game views" hidden>${(['write', 'vote', 'mine'] as Tab[]).map((t) => `<button data-tab="${t}">${t.toUpperCase()}</button>`).join('')}</nav>`;
+    <nav class="tabs" id="tabs" aria-label="Game views" hidden>${(['write', 'vote', 'mine'] as Tab[]).map((t) => `<button data-tab="${t}">${t === 'vote' ? 'RATE' : t.toUpperCase()}</button>`).join('')}</nav>`;
     $('#sndBtn').addEventListener('click', () => {
       SFX.setOn(!SFX.on); SFX.init();
       $('#sndBtn').textContent = SFX.on ? 'SND ON' : 'SND OFF';
@@ -93,7 +93,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
       store.answer(id, v as Answer).catch((err) => { console.error(err); toast('TOO LATE, OR NOT SENT'); if (P.solo === id) P.solo = null; render(); });
     } else if (act === 'next') { P.solo = null; scrollTo({ top: 0 }); } else if (act === 'vote') {
       SFX.blip();
-      store.vote(id, v as 'will' | 'wont').catch((err) => { console.error(err); toast('VOTE NOT COUNTED'); });
+      store.vote(id, Number(v) as Vote).catch((err) => { console.error(err); toast('RATING NOT COUNTED'); });
     } else if (act === 'tag') {
       SFX.blip();
       store.tag(id, !store.state.tags[id]?.[store.me]).catch((err) => { console.error(err); toast('TAG NOT COUNTED'); });
@@ -129,6 +129,9 @@ export function mountPhone(root: HTMLElement, store: Store) {
   const answerButtons = (id: string, off: boolean) => `<div class="ab">${(['real', 'fake'] as Answer[]).map((v) =>
     `<button class="big ans ${v}" data-act="answer" data-id="${id}" data-v="${v}"${off || !store.canAct() ? ' disabled' : ''}>${v.toUpperCase()}</button>`).join('')}</div>`;
 
+  const levelButtons = (id: string, mine: Vote | undefined, off: boolean) => `<p class="px lv-q">HOW WILD IS IT?</p><div class="lvs">${RATINGS.map((n) =>
+    `<button class="lv${mine === n ? ' on' : ''}" style="--rc:${levelColor(n)}" aria-pressed="${mine === n}" data-act="vote" data-id="${esc(id)}" data-v="${n}"${off ? ' disabled' : ''}><b class="px">${n}</b>${LEVELS[n - 1]}</button>`).join('')}</div>`;
+
   function reveal(id: string) {
     const s = store.state, key = s.keys[id], mine = s.answers[id]?.[store.me];
     if (!key) return '<p class="px empty" role="status">CHECKING...</p>';
@@ -139,8 +142,8 @@ export function mountPhone(root: HTMLElement, store: Store) {
       <span class="px">${!mine ? 'NO ANSWER' : ok ? `YOU GOT IT +${pts}` : 'NOT THIS TIME'}</span></div>
       <p class="explain">${esc(key.explainer)}</p>
       ${key.source ? `<p class="src"><a href="${esc(key.source)}" target="_blank" rel="noopener">Read the source</a></p>` : ''}
-      ${key.seed ? `<div class="follow"><p>Fake in 2026. Will this be true by the end of 2027?</p><p class="seedtext">${esc(key.seedText)}</p>
-        <div class="ab">${(['will', 'wont'] as const).map((v) => `<button class="${v === 'will' ? 'up' : 'dn'} px${vote === v ? ' on' : ''}" aria-pressed="${vote === v}" data-act="vote" data-id="${esc(key.seed)}" data-v="${v}">${v === 'will' ? 'YES' : 'NO'}</button>`).join('')}</div></div>` : ''}`;
+      ${key.seed ? `<div class="follow"><p>Didn't happen in 2026. Will it take place in 2027?</p><p class="seedtext">${esc(key.seedText)}</p>
+        ${levelButtons(key.seed, vote, false)}</div>` : ''}`;
   }
   /** Buzz once when the answer to a card on screen arrives. */
   function buzz(state: StateName) {
@@ -188,12 +191,10 @@ export function mountPhone(root: HTMLElement, store: Store) {
   function cardHtml(x: BoardItem, frozen: boolean) {
     const mine = x.pid === store.me, my = store.state.votes[x.id]?.[store.me], tagged = !!store.state.tags[x.id]?.[store.me];
     const off = frozen || !store.canAct() ? ' disabled' : '';
-    const stats = `${x.pct === null ? 'No votes yet' : `${x.pct}% say it will happen · ${x.total} vote${x.total === 1 ? '' : 's'}`}${x.cyber ? ` · <span class="cybertxt">CYBERBONKERS ${x.cyber}</span>` : ''}`;
-    return `<div class="vc"><p class="vc-t">${esc(x.text)}</p><p class="vc-m">by <span style="color:${esc(x.color)}">${esc(x.author)}</span><br>${stats}</p>
-      ${mine ? '<p class="px vc-mine">YOURS</p>' : frozen ? '' : `<div class="vc-a">
-        <button class="up px${my === 'will' ? ' on' : ''}" aria-pressed="${my === 'will'}" data-act="vote" data-id="${esc(x.id)}" data-v="will"${off}>WILL HAPPEN</button>
-        <button class="dn px${my === 'wont' ? ' on' : ''}" aria-pressed="${my === 'wont'}" data-act="vote" data-id="${esc(x.id)}" data-v="wont"${off}>WON'T</button>
-        <button class="cyb px${tagged ? ' on' : ''}" aria-pressed="${tagged}" data-act="tag" data-id="${esc(x.id)}"${off}>CYBERBONKERS</button></div>`}</div>`;
+    const stats = `${x.level ? `<span style="color:${levelColor(x.level)}">${LEVELS[x.level - 1]}</span> · ${x.avg!.toFixed(1)} from ${x.total} rating${x.total === 1 ? '' : 's'}` : 'Not rated yet'}${x.cyber ? ` · <span class="cybertxt">CYBERBONKERS ${x.cyber}</span>` : ''}`;
+    return `<div class="vc"${x.level ? ` style="border-color:${levelColor(x.level)}"` : ''}><p class="vc-t">${esc(x.text)}</p><p class="vc-m">by <span style="color:${esc(x.color)}">${esc(x.author)}</span><br>${stats}</p>
+      ${mine ? '<p class="px vc-mine">YOURS</p>' : frozen ? '' : `${levelButtons(x.id, my, !!off)}
+        <button class="cyb px${tagged ? ' on' : ''}" aria-pressed="${tagged}" data-act="tag" data-id="${esc(x.id)}"${off}>CYBERBONKERS</button>`}</div>`;
   }
 
   function renderBoard(frozen: boolean) {
@@ -205,7 +206,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
       b.hidden = frozen && b.dataset.tab === 'write';
       b.classList.toggle('on', b.dataset.tab === tab);
       b.setAttribute('aria-current', String(b.dataset.tab === tab));
-      if (b.dataset.tab === 'vote') b.textContent = frozen ? 'BOARD' : 'VOTE';
+      if (b.dataset.tab === 'vote') b.textContent = frozen ? 'BOARD' : 'RATE';
     }
     if (tab === 'write') {
       const len = $<HTMLTextAreaElement>('#predInp').value.length;
@@ -225,7 +226,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
     for (const x of list) if (x.pid === store.me) P.shown.add(x.id);
     const fresh = list.filter((x) => !P.shown.has(x.id)).length;
     const vis = list.filter((x) => P.shown.has(x.id));
-    $('#listHead').textContent = frozen ? 'LOCKED. SEE YOU IN 2027.' : tab === 'mine' ? `YOUR PREDICTIONS · QUIZ SCORE ${myScore()}` : 'WILL IT HAPPEN IN 2027?';
+    $('#listHead').textContent = frozen ? 'LOCKED. SEE YOU IN 2027.' : tab === 'mine' ? `YOUR PREDICTIONS · QUIZ SCORE ${myScore()}` : 'HOW WILD IS IT FOR 2027?';
     $('#newchip').hidden = !fresh;
     $('#newchip').textContent = `${fresh} NEW. TAP TO SHOW`;
     paintList($('#feed'), vis.slice(0, P.limit).map((x) => ({ id: x.id, html: cardHtml(x, frozen) })));

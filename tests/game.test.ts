@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREEZE_AT } from '../src/shared/constants';
-import { leader, board, mythBusters, pointsFor, rising, stateAt, topCyber } from '../src/shared/game';
+import { leader, mostLikely, board, mythBusters, pointsFor, rising, stateAt, topCyber } from '../src/shared/game';
 import { nameKey, callsignOk, cleanCallsign } from '../src/shared/text';
 import { emptyState, type GameState } from '../src/shared/types';
 import deck from '../content/deck.json';
@@ -41,11 +41,14 @@ describe('myth-buster scoring', () => {
 });
 
 describe('leader', () => {
-  const item = (id: string, will: number, total: number, ts = 1) => ({ id, will, total, pct: total ? Math.round((100 * will) / total) : null, cyber: 0, ts }) as never;
-  it('picks the most backed, then the higher share, and nothing until someone backs one', () => {
-    expect(leader([item('a', 0, 3), item('b', 0, 0)])).toBeUndefined();
-    expect(leader([item('a', 2, 5), item('b', 3, 6)])).toMatchObject({ id: 'b' });
-    expect(leader([item('a', 2, 5), item('b', 2, 2)])).toMatchObject({ id: 'b' });
+  const item = (id: string, avg: number | null, total: number, ts = 1) => ({ id, avg, total, cyber: 0, ts }) as never;
+  it('picks the wildest with enough ratings, then the one with more ratings', () => {
+    expect(leader([item('a', 5, 1), item('b', null, 0)])).toBeUndefined();
+    expect(leader([item('a', 3, 5), item('b', 4, 2)])).toMatchObject({ id: 'b' });
+    expect(leader([item('a', 4, 2), item('b', 4, 3)])).toMatchObject({ id: 'b' });
+  });
+  it('lists the most plausible first once three people have rated', () => {
+    expect(mostLikely([item('a', 4, 3), item('b', 1.5, 3), item('c', 1, 2)]).map((x) => x.id)).toEqual(['b', 'a']);
   });
 });
 
@@ -53,13 +56,14 @@ describe('board', () => {
   const s = base();
   s.preds = { p: { pid: 'a', text: 'one', ts: 10 }, q: { pid: 'seed', seed: true, text: 'two', ts: 5 }, h: { pid: 'b', text: 'hidden', ts: 1 } };
   s.hidden = { h: true };
-  s.votes = { q: { a: 'will', b: 'wont', c: 'will' } };
+  s.votes = { q: { a: 5, b: 2, c: 4 } };
   s.tags = { p: { b: true } };
-  it('works out percentages, seed authorship and hides moderated items', () => {
+  it('averages ratings into a level, sets seed authorship and hides moderated items', () => {
     const items = board(s);
     expect(items.map((x) => x.id)).toEqual(['p', 'q']);
-    expect(items[1]).toMatchObject({ author: 'humAIn', pct: 67, total: 3 });
-    expect(items[0].pct).toBeNull();
+    expect(items[1]).toMatchObject({ author: 'humAIn', level: 4, total: 3 });
+    expect(items[1].avg).toBeCloseTo(11 / 3);
+    expect(items[0].level).toBeNull();
     expect(topCyber(items).map((x) => x.id)).toEqual(['p']);
     expect(rising(items, 60_000).length).toBe(2);
   });

@@ -100,6 +100,13 @@ p.empty:not(.px){font-family:var(--tx);font-size:22px;line-height:1.15}
 .verdict span{font-size:11px;color:var(--y)}
 .explain{font-size:24px;margin-bottom:10px}
 .src a{color:var(--c);display:inline-block;padding:12px 0}
+.lv-q{font-size:10px;color:var(--dim);margin-bottom:8px}
+.lvs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.lvs .lv{flex:1 1 28%;min-height:54px;padding:8px 2px;border:3px solid var(--rc);color:var(--rc);font-family:var(--tx);font-size:17px;line-height:1.1;white-space:nowrap}
+.lvs .lv b{display:block;font-weight:normal;font-size:12px;margin-bottom:3px}
+.lvs .lv.on{background:var(--rc);color:#05010f;box-shadow:0 0 14px var(--rc)}
+.lvs .lv:disabled{opacity:.45}
+.vc>.cyb{width:100%}
 .follow{border-top:2px dashed var(--line);margin-top:16px;padding-top:16px}
 .seedtext{color:var(--y);margin:8px 0 16px;font-size:24px}
 .hold{text-align:center;padding:30px 0 20px}

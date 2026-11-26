@@ -1,4 +1,4 @@
-import { ANSWER_WINDOW_MS, CORRECT_POINTS, FREEZE_AT, SPEED_BONUS_MAX } from './constants';
+import { ANSWER_WINDOW_MS, CORRECT_POINTS, FINAL_MIN_RATINGS, FREEZE_AT, LEADER_MIN_RATINGS, SPEED_BONUS_MAX } from './constants';
 import type { GameState, Prediction, StateName } from './types';
 
 /** The state every screen shows. The New Year freeze wins over anything the host set. */
@@ -37,7 +37,8 @@ export function mythBusters(s: GameState, isFlagged: (t: string) => boolean = ()
   return [...rows.values()].sort((a, b) => b.points - a.points || b.right - a.right || a.name.localeCompare(b.name));
 }
 
-export interface BoardItem extends Prediction { id: string; author: string; color: string; will: number; wont: number; total: number; pct: number | null; cyber: number }
+/** total = ratings received; avg and level (the rounded average) are null until someone rates it. */
+export interface BoardItem extends Prediction { id: string; author: string; color: string; total: number; avg: number | null; level: number | null; cyber: number }
 
 /** Predictions that may be shown: not hidden, and not flagged (unless the host restored them). */
 export function board(s: GameState, isFlagged: (t: string) => boolean = () => false): BoardItem[] {
@@ -45,11 +46,12 @@ export function board(s: GameState, isFlagged: (t: string) => boolean = () => fa
     .filter(([id, p]) => !s.hidden[id] && (p.seed || s.restored[id] || !isFlagged(p.text)))
     .map(([id, p]) => {
       const v = Object.values(s.votes[id] ?? {});
-      const will = v.filter((x) => x === 'will').length, wont = v.length - will;
+      const rs = v.filter((x) => typeof x === 'number');
+      const avg = rs.length ? rs.reduce((a: number, b) => a + b, 0) / rs.length : null;
       const who = p.seed ? undefined : s.players[p.pid];
       return {
         id, ...p, author: p.seed ? 'humAIn' : who?.name ?? '???', color: who?.color ?? '#00e5ff',
-        will, wont, total: v.length, pct: v.length ? Math.round((100 * will) / v.length) : null,
+        total: rs.length, avg, level: avg === null ? null : Math.round(avg),
         cyber: Object.keys(s.tags[id] ?? {}).length,
       };
     });
@@ -61,7 +63,10 @@ export const rising = (items: BoardItem[], now: number) => {
   const heat = (x: BoardItem) => (x.total + 2 * x.cyber) / (1 + (now - x.ts) / 60_000);
   return [...items].filter((x) => heat(x) > 0).sort((a, b) => heat(b) - heat(a));
 };
-/** The most-backed prediction: most "will happen" votes, then the higher share. None until someone backs one. */
+/** The wildest prediction: highest average rating, then the most ratings. None until one has enough ratings. */
 export const leader = (items: BoardItem[]) =>
-  items.filter((x) => x.will > 0).sort((a, b) => b.will - a.will || b.pct! - a.pct! || b.cyber - a.cyber || a.ts - b.ts)[0] as BoardItem | undefined;
+  items.filter((x) => x.total >= LEADER_MIN_RATINGS).sort((a, b) => b.avg! - a.avg! || b.total - a.total || b.cyber - a.cyber || a.ts - b.ts)[0] as BoardItem | undefined;
+/** Closest to PLAUSIBLE first. */
+export const mostLikely = (items: BoardItem[]) =>
+  items.filter((x) => x.total >= FINAL_MIN_RATINGS).sort((a, b) => a.avg! - b.avg! || b.total - a.total || a.ts - b.ts);
 export const topCyber = (items: BoardItem[], n = 5) => items.filter((x) => x.cyber > 0).sort((a, b) => b.cyber - a.cyber || b.ts - a.ts).slice(0, n);

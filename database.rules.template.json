@@ -111,7 +111,7 @@
           ".read": "auth != null",
           "$pred": { "$uid": {
             ".write": "auth != null && auth.uid === $uid && newData.exists() && now < __FREEZE_AT__ && root.child('games').child($game).child('joins').child($uid).child('ok').exists() && (root.child('games').child($game).child('seedIds').child($pred).exists() || (root.child('games').child($game).child('show').child('name').val() === 'PREDICT' && root.child('games').child($game).child('predictions').child($pred).child('pid').exists() && root.child('games').child($game).child('predictions').child($pred).child('pid').val() !== auth.uid))",
-            ".validate": "newData.val() === 'will' || newData.val() === 'wont'"
+            ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 4 || newData.val() === 5)"
           } }
         },
 

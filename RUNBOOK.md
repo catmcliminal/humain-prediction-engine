@@ -30,7 +30,7 @@ Backup address: https://humain-predictionengine.netlify.app/predictionengine2027
 | Each card | REVEAL | Answer on screen and phones together, % who got it right |
 | (fake cards) | | Phones ask "true by end of 2027?" Give people a moment |
 | After card 6 | RESULTS | Myth-buster top 10 |
-| Half two | PREDICT | Fakes appear as seed predictions; write, vote, CYBERBONKERS |
+| Half two | PREDICT | Fakes appear as seed predictions; write, rate 1 to 5 (PLAUSIBLE to UNHINGED), CYBERBONKERS |
 
 - Leaving arrival for LIVE QUIZ closes the warm-up cards and counts their scores.
 - **False start:** RESET QUIZ (tap twice). Wipes live answers and scores; warm-up scores stay.

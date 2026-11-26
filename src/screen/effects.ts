@@ -1,7 +1,8 @@
 import type { BoardItem, Rank } from '../shared/game';
 import { burst } from '../ui/juice';
 import { SFX } from '../ui/sound';
-import { mothershipSvg, ship } from '../ui/sprites';
+import { LEVELS } from '../shared/constants';
+import { levelColor, mothershipSvg, ship } from '../ui/sprites';
 import { esc, reducedMotion } from '../ui/util';
 
 /** The mothership carries the most-backed prediction across the top. A new leader flies in. */
@@ -12,8 +13,8 @@ export function mothership(el: HTMLElement) {
   const set = () => { if (next !== html) { html = next; card.innerHTML = html; } };
   return (lead: BoardItem | undefined) => {
     next = lead
-      ? `<h3 class="px">MOST BACKED</h3><p class="ms-t">${esc(lead.text)}</p><p class="ms-m"><span style="color:${esc(lead.color)}">${esc(lead.author)}</span><b>${lead.pct}% WILL HAPPEN · ${lead.total}</b></p>`
-      : '<h3 class="px">MOTHERSHIP</h3><p class="ms-t dimtxt">Awaiting a worthy prediction. Vote on your phone.</p>';
+      ? `<h3 class="px">WILDEST SO FAR</h3><p class="ms-t">${esc(lead.text)}</p><p class="ms-m"><span style="color:${esc(lead.color)}">${esc(lead.author)}</span><b style="color:${levelColor(lead.level!)}">${LEVELS[lead.level! - 1]} ${lead.avg!.toFixed(1)} · ${lead.total} RATINGS</b></p>`
+      : '<h3 class="px">MOTHERSHIP</h3><p class="ms-t dimtxt">Awaiting something unhinged. Rate predictions on your phone.</p>';
     const now = lead?.id ?? null;
     if (id === undefined || id === now || reducedMotion()) { id = now; if (!busy) set(); return; }
     id = now;

@@ -2,13 +2,13 @@ import qrcode from 'qrcode-generator';
 import './screen.css';
 import { brand } from '../brand.config';
 import type { Store } from '../data/store';
-import { ANSWER_WINDOW_MS } from '../shared/constants';
+import { ANSWER_WINDOW_MS, LEVELS } from '../shared/constants';
 import { loadFlagger } from '../shared/flags';
-import { board, leader, mythBusters, newest, rising, topCyber, type BoardItem } from '../shared/game';
+import { board, leader, mostLikely, mythBusters, newest, rising, topCyber, type BoardItem } from '../shared/game';
 import type { StateName } from '../shared/types';
 import { slam } from '../ui/juice';
 import { SFX } from '../ui/sound';
-import { mothershipSvg } from '../ui/sprites';
+import { levelColor, mothershipSvg, sprite } from '../ui/sprites';
 import { paint } from '../ui/paint';
 import { $, esc } from '../ui/util';
 import { flyer, mothership, results } from './effects';
@@ -23,7 +23,7 @@ export function mountScreen(root: HTMLElement, store: Store) {
 
   root.innerHTML = `
   <header class="sh"><div><div class="presents px">${esc(brand.presentsLine)}</div><h1>${esc(brand.title.first)} <em>${esc(brand.title.second)}</em></h1></div>
-    <div class="stats"><div class="stat"><b id="st-p">0</b><span>PLAYERS</span></div><div class="stat"><b id="st-n">0</b><span>PREDICTIONS</span></div><div class="stat"><b id="st-v">0</b><span>VOTES</span></div></div><button id="snd" class="snd px"></button></header>
+    <div class="stats"><div class="stat"><b id="st-p">0</b><span>PLAYERS</span></div><div class="stat"><b id="st-n">0</b><span>PREDICTIONS</span></div><div class="stat"><b id="st-v">0</b><span>RATINGS</span></div></div><button id="snd" class="snd px"></button></header>
   <div class="sm"><div class="main"><div id="mother" hidden></div><div id="stage" class="stage"></div><div id="results" class="stage center wide" hidden></div></div>
     <aside class="side">
       <div class="join"><div id="qr" aria-hidden="true"></div><p>JOIN ON YOUR PHONE<b id="url"></b></p></div>
@@ -71,8 +71,8 @@ export function mountScreen(root: HTMLElement, store: Store) {
     return `<h2>${title}</h2><table class="sb">${rows.map((r, i) =>
       `<tr><td class="r">${i + 1}</td><td class="n" style="color:${esc(r.color)}">${esc(r.name)}</td><td class="s">${r.points}</td></tr>`).join('') || '<tr><td class="dimtxt">Waiting for players</td></tr>'}</table>`;
   };
-  const predCard = (x: BoardItem) => `<article class="pc"><p class="pt">${esc(x.text)}</p>
-    <p class="pm"><span style="color:${esc(x.color)}">${esc(x.author)}</span><b>${x.pct === null ? 'NO VOTES YET' : `${x.pct}% WILL HAPPEN · ${x.total}`}</b>${x.cyber ? `<i class="cybertxt px">CB ${x.cyber}</i>` : ''}</p></article>`;
+  const predCard = (x: BoardItem) => `<article class="pc"${x.level ? ` style="border-color:${levelColor(x.level)}"` : ''}><p class="pt">${esc(x.text)}</p>
+    <p class="pm"><span style="color:${esc(x.color)}">${esc(x.author)}</span>${x.level ? `${sprite(x.level, 3)}<b style="color:${levelColor(x.level)}">${LEVELS[x.level - 1]} ${x.avg!.toFixed(1)} · ${x.total}</b>` : '<b>NOT RATED YET</b>'}${x.cyber ? `<i class="cybertxt px">CB ${x.cyber}</i>` : ''}</p></article>`;
   const title = (big: string, small = '') => `<div class="center">${mothershipSvg(14)}<h2 class="mega px">${big}</h2>${small ? `<p class="sub">${small}</p>` : ''}</div>`;
 
   /** New and rising predictions interleaved, shown a page at a time. */
@@ -108,7 +108,7 @@ export function mountScreen(root: HTMLElement, store: Store) {
     if (state === 'PAUSED') return title('BACK AT 5', 'Scan the code to play.');
     if (state === 'LIVE_QUIZ') return quiz();
     if (state === 'PREDICT') return ticker(items);
-    const likely = items.filter((x) => x.total >= 3).sort((a, b) => b.pct! - a.pct! || b.total - a.total).slice(0, PER_PAGE);
+    const likely = mostLikely(items).slice(0, PER_PAGE);
     return `<h2 class="kicker px">FINAL BOARD: MOST LIKELY</h2><div class="grid">${likely.map(predCard).join('') || '<p class="sub">Locked. See you in 2027.</p>'}</div>`;
   }
 

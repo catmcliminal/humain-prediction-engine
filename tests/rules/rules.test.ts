@@ -110,17 +110,17 @@ describe('predictions, votes and tags', () => {
   it('vote on others only, change your mind, tag once', async () => {
     await state('PREDICT');
     await post('alice', 'p1');
-    await assertFails(db(live, 'alice').ref(`${G}/votes/p1/alice`).set('will'));
+    await assertFails(db(live, 'alice').ref(`${G}/votes/p1/alice`).set(4));
     await assertFails(db(live, 'alice').ref(`${G}/tags/p1/alice`).set(true));
-    await assertSucceeds(db(live, 'bob').ref(`${G}/votes/p1/bob`).set('will'));
-    await assertSucceeds(db(live, 'bob').ref(`${G}/votes/p1/bob`).set('wont'));
-    await assertFails(db(live, 'bob').ref(`${G}/votes/p1/bob`).set(true));
+    await assertSucceeds(db(live, 'bob').ref(`${G}/votes/p1/bob`).set(4));
+    await assertSucceeds(db(live, 'bob').ref(`${G}/votes/p1/bob`).set(1));
+    for (const bad of [true, 0, 6, 2.5, '3', 'will']) await assertFails(db(live, 'bob').ref(`${G}/votes/p1/bob`).set(bad));
     await assertSucceeds(db(live, 'bob').ref(`${G}/tags/p1/bob`).set(true));
     await assertSucceeds(db(live, 'bob').ref(`${G}/tags/p1/bob`).remove());
   });
   it('the follow-up vote on a seed works before PREDICT; only the host can create seeds', async () => {
-    await assertSucceeds(db(live, 'bob').ref(`${G}/votes/seed-kq/bob`).set('will'));
-    await assertFails(db(live, 'bob').ref(`${G}/votes/made-up/bob`).set('will'));
+    await assertSucceeds(db(live, 'bob').ref(`${G}/votes/seed-kq/bob`).set(4));
+    await assertFails(db(live, 'bob').ref(`${G}/votes/made-up/bob`).set(4));
     const s = { pid: 'seed', seed: true, text: 'An AI creative director wins a Cannes Lion.', ts: TS };
     await assertFails(db(live, 'bob').ref(`${G}/predictions/seed-hn`).set(s));
     await asHost(live);
@@ -145,8 +145,8 @@ describe('after the New Year freeze', () => {
   it('every write and vote is refused', async () => {
     await seed(over, { ...base('alice', 'bob'), [`${G}/show`]: { name: 'PREDICT' }, [`${G}/hosts/host`]: 'testword', [`${G}/predictions/p1`]: { pid: 'alice', text: 'already here', ts: 1 } });
     await assertFails(post('bob', 'p2', 'a perfectly valid prediction', over));
-    await assertFails(db(over, 'bob').ref(`${G}/votes/p1/bob`).set('will'));
-    await assertFails(db(over, 'bob').ref(`${G}/votes/seed-kq/bob`).set('will'));
+    await assertFails(db(over, 'bob').ref(`${G}/votes/p1/bob`).set(4));
+    await assertFails(db(over, 'bob').ref(`${G}/votes/seed-kq/bob`).set(4));
     await assertFails(db(over, 'bob').ref(`${G}/tags/p1/bob`).set(true));
     await assertFails(answer('bob', 'a1', over));
     await assertFails(db(over, 'host').ref(`${G}/show/name`).set('PREDICT'));

@@ -16,6 +16,13 @@ export const PREDICTION_MIN = 8;
 export const PREDICTION_MAX = 140;
 export const POST_INTERVAL_MS = 15_000;
 
+/* how wild a prediction is: players rate 1 to 5 */
+export const LEVELS = ['PLAUSIBLE', 'PROBABLE-ISH', 'BOLD', 'SPICY', 'UNHINGED'] as const;
+export const RATINGS = [1, 2, 3, 4, 5] as const;
+/** Ratings needed before a prediction can ride the mothership, or make the final board. */
+export const LEADER_MIN_RATINGS = 2;
+export const FINAL_MIN_RATINGS = 3;
+
 export const FEED_PAGE = 40;
 export const SEED_AUTHOR = 'seed';
 
