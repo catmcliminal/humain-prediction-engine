@@ -10,6 +10,12 @@ export const stateAt = (s: GameState, now: number): StateName => (now >= FREEZE_
  */
 export const phoneState = (state: StateName, inRoom: boolean): StateName => (inRoom || state === 'FROZEN' ? state : 'PREDICT');
 
+/**
+ * Whether a fake card's follow-up prediction belongs on the board. Reserve cards only once they have been revealed,
+ * so unused ones neither crowd the board nor give themselves away.
+ */
+export const seedDue = (s: GameState, card: string) => s.cards[card]?.deck !== 'reserve' || !!s.revealed[card];
+
 export const deckCards = (s: GameState, deck: 'arrival' | 'live' | 'reserve') =>
   Object.entries(s.cards).filter(([, c]) => c.deck === deck).sort((a, b) => a[1].order - b[1].order).map(([id, c]) => ({ id, ...c }));
 

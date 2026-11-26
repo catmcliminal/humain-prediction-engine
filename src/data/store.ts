@@ -6,7 +6,7 @@ import {
 } from 'firebase/database';
 import { config } from '../config';
 import { FREEZE_AT, SEED_AUTHOR } from '../shared/constants';
-import { deckCards, stateAt } from '../shared/game';
+import { deckCards, seedDue, stateAt } from '../shared/game';
 import { ROOM_PARAM, stillInRoom } from '../shared/room';
 import { emptyState, type Answer, type GameState, type StateName, type Vote } from '../shared/types';
 
@@ -203,8 +203,8 @@ export class Store {
   }
   private async loadSeeds() {
     const keys = ((await get(this.r('key'))).val() ?? {}) as GameState['keys'];
-    for (const k of Object.values(keys)) {
-      if (!k.seed || !k.seedText || this.state.preds[k.seed]) continue;
+    for (const [card, k] of Object.entries(keys)) {
+      if (!k.seed || !k.seedText || this.state.preds[k.seed] || !seedDue(this.state, card)) continue;
       await set(this.r(`predictions/${k.seed}`), { pid: SEED_AUTHOR, seed: true, text: k.seedText, ts: serverTimestamp() });
     }
   }

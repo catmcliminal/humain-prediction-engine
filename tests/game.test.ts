@@ -1,4 +1,4 @@
-import { phoneState } from '../src/shared/game';
+import { phoneState, seedDue } from '../src/shared/game';
 import { ROOM_MS, roomUrl, stillInRoom } from '../src/shared/room';
 import { describe, expect, it } from 'vitest';
 import { FREEZE_AT } from '../src/shared/constants';
@@ -81,6 +81,16 @@ describe('phone state', () => {
   });
 });
 
+describe('seed predictions', () => {
+  it('load for main cards, and for reserve cards only after their reveal', () => {
+    const s = base();
+    s.cards = { l: { text: 'l', deck: 'live', order: 1 }, x: { text: 'x', deck: 'reserve', order: 1 } };
+    expect([seedDue(s, 'l'), seedDue(s, 'x')]).toEqual([true, false]);
+    s.revealed = { x: true };
+    expect(seedDue(s, 'x')).toBe(true);
+  });
+});
+
 describe('approval', () => {
   const s = base();
   s.preds = {
@@ -120,12 +130,13 @@ describe('headline deck', () => {
   const entries = Object.entries(deck.key) as [string, { real: boolean; source?: string; seed?: string; seedText?: string; explainer: string }][];
   it('has the arrival, live and reserve cards with a source on every real one and a seed on every fake', () => {
     const decks = Object.values(deck.cards).map((c) => c.deck);
-    expect([decks.filter((d) => d === 'arrival').length, decks.filter((d) => d === 'live').length, decks.filter((d) => d === 'reserve').length]).toEqual([3, 6, 2]);
+    expect([decks.filter((d) => d === 'arrival').length, decks.filter((d) => d === 'live').length, decks.filter((d) => d === 'reserve').length]).toEqual([3, 6, 17]);
     for (const [, k] of entries) {
       if (k.real) expect(k.source).toMatch(/^https:/);
       else expect(k.seed && k.seedText).toBeTruthy();
     }
-    expect(Object.keys(deck.seedIds)).toHaveLength(4);
+    expect(Object.keys(deck.seedIds)).toHaveLength(13);
+    for (const [seed, card] of Object.entries(deck.seedIds)) expect((deck.key as Record<string, { seed?: string }>)[card].seed).toBe(seed);
   });
   it('contains no em dashes', () => { expect(JSON.stringify(deck)).not.toContain('—'); });
 });

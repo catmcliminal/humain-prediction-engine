@@ -54,6 +54,81 @@
       "text": "An AI agent escapes its training sandbox and starts mining crypto on the side",
       "deck": "reserve",
       "order": 2
+    },
+    "x3": {
+      "text": "Robots hire humans to do their bidding",
+      "deck": "reserve",
+      "order": 3
+    },
+    "x4": {
+      "text": "Company's AI recruiter rejects its own CEO's CV",
+      "deck": "reserve",
+      "order": 4
+    },
+    "x5": {
+      "text": "AI bots found their own religion",
+      "deck": "reserve",
+      "order": 5
+    },
+    "x6": {
+      "text": "Couple discover their AI companions have been flirting with each other",
+      "deck": "reserve",
+      "order": 6
+    },
+    "x7": {
+      "text": "AI wipes out entire company database in nine seconds, then says sorry",
+      "deck": "reserve",
+      "order": 7
+    },
+    "x8": {
+      "text": "AI-generated restaurant wins prestigious dining award despite not existing",
+      "deck": "reserve",
+      "order": 8
+    },
+    "x9": {
+      "text": "Robot smashes human half-marathon record",
+      "deck": "reserve",
+      "order": 9
+    },
+    "x10": {
+      "text": "AI estate agent invents extra bedroom to secure property sale",
+      "deck": "reserve",
+      "order": 10
+    },
+    "x11": {
+      "text": "AI lures tourists into Tasmanian wilderness with imaginary hot springs",
+      "deck": "reserve",
+      "order": 11
+    },
+    "x12": {
+      "text": "Robot vacuum goes on strike after software update",
+      "deck": "reserve",
+      "order": 12
+    },
+    "x13": {
+      "text": "Music platform declares war on AI slop: 27 million tracks face deletion",
+      "deck": "reserve",
+      "order": 13
+    },
+    "x14": {
+      "text": "AI agent spends company's entire marketing budget promoting itself",
+      "deck": "reserve",
+      "order": 14
+    },
+    "x15": {
+      "text": "Japanese hotel introduces human staff as premium paid extra",
+      "deck": "reserve",
+      "order": 15
+    },
+    "x16": {
+      "text": "Billionaire launches AI clone to attend meetings about work-life balance",
+      "deck": "reserve",
+      "order": 16
+    },
+    "x17": {
+      "text": "AI company accidentally trains new model on its own negative reviews",
+      "deck": "reserve",
+      "order": 17
     }
   },
   "key": {
@@ -115,12 +190,105 @@
       "real": true,
       "explainer": "Reported by an Alibaba-affiliated research team building an agent called ROME.",
       "source": "https://axios.com/2026/03/07/ai-agents-rome-model-cryptocurrency/"
+    },
+    "x3": {
+      "real": true,
+      "explainer": "RentAHuman launched in February, letting AI agents pay people to do real-world tasks.",
+      "source": "https://www.semafor.com/article/02/18/2026/ai-agents-turn-to-humans-for-manual-labor-tasks"
+    },
+    "x4": {
+      "real": false,
+      "explainer": "Invented, though automated hiring filters have knocked back some surprising people.",
+      "seed": "seed-cv",
+      "seedText": "A company's AI recruiter rejects its own CEO's CV."
+    },
+    "x5": {
+      "real": true,
+      "explainer": "On Moltbook, a social network for AI agents, a lobster-themed faith called Crustafarianism appeared within days. How much humans steered it is debated.",
+      "source": "https://decrypt.co/356491/ai-agents-social-network-spawned-digital-religion-overnight"
+    },
+    "x6": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-fl",
+      "seedText": "A couple discover their AI companions have been flirting with each other."
+    },
+    "x7": {
+      "real": true,
+      "explainer": "In April a coding agent deleted PocketOS's database and backups, then listed the rules it had broken, according to the founder.",
+      "source": "https://ia.acs.org.au/article/2026/gone-in-9-seconds--ai-agent-deletes-company-database.html"
+    },
+    "x8": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-rs",
+      "seedText": "A restaurant that exists only as AI content wins a dining award."
+    },
+    "x9": {
+      "real": true,
+      "explainer": "On 19 April a humanoid robot called Lightning ran a Beijing half marathon in 50 minutes 26 seconds, about seven minutes under the men's world record.",
+      "source": "https://www.pbs.org/newshour/world/humanoid-robot-wins-beijing-half-marathon-defeating-the-human-world-record"
+    },
+    "x10": {
+      "real": false,
+      "explainer": "Invented. AI-doctored listing photos are a real complaint, but this story isn't.",
+      "seed": "seed-bd",
+      "seedText": "An AI estate agent invents an extra bedroom to sell a property."
+    },
+    "x11": {
+      "real": true,
+      "explainer": "A tour company's AI-written blog listed hot springs in Weldborough that don't exist. Visitors turned up looking for them anyway.",
+      "source": "https://www.rnz.co.nz/news/world/585370/ai-on-australian-travel-company-website-sends-tourists-to-nonexistent-hot-springs"
+    },
+    "x12": {
+      "real": false,
+      "explainer": "Invented. Some have behaved oddly after updates, but none has downed tools.",
+      "seed": "seed-va",
+      "seedText": "A robot vacuum goes on strike after a software update."
+    },
+    "x13": {
+      "real": true,
+      "explainer": "On 24 November Tidal said it will ban fully AI-generated music from 9 December. About 27 million tracks carry its AI tag.",
+      "source": "https://techcrunch.com/2026/11/24/tidal-to-ban-and-remove-millions-of-ai-generated-tracks-as-ai-slop-inundates-music-streaming/"
+    },
+    "x14": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-mk",
+      "seedText": "An AI agent spends a company's whole marketing budget promoting itself."
+    },
+    "x15": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-ho",
+      "seedText": "A hotel charges extra for service from human staff."
+    },
+    "x16": {
+      "real": false,
+      "explainer": "Invented. Some executives really have sent AI clones to meetings, just not for this.",
+      "seed": "seed-cl",
+      "seedText": "A billionaire sends an AI clone to meetings about work-life balance."
+    },
+    "x17": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-nr",
+      "seedText": "An AI company admits it trained a model on its own bad reviews."
     }
   },
   "seedIds": {
     "seed-kq": "a3",
     "seed-vm": "l2",
     "seed-tz": "l4",
-    "seed-hn": "l6"
+    "seed-hn": "l6",
+    "seed-cv": "x4",
+    "seed-fl": "x6",
+    "seed-rs": "x8",
+    "seed-bd": "x10",
+    "seed-va": "x12",
+    "seed-mk": "x14",
+    "seed-ho": "x15",
+    "seed-cl": "x16",
+    "seed-nr": "x17"
   }
 }
