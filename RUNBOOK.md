@@ -11,14 +11,14 @@ Christmas meetup, Friday 27 November 2026, 5:00 to 5:10pm, half two running into
 Backup address: https://humain-predictionengine.netlify.app/predictionengine2027/
 
 ## Before doors open
-1. **Wipe rehearsal data and reload the deck** (do this after your last rehearsal):
+1. **Reset the quiz and ratings, keeping players, predictions and your approve/hide choices:**
    ```bash
-   cd ~/Downloads/humain-prediction-engine && npx firebase database:remove /games/ai-2027 --project predictionengine-46f43 --force && npm run content
+   cd ~/Downloads/humain-prediction-engine && for p in answers answered revealed opened show votes tags; do npx firebase database:remove /games/ai-2027/$p --project predictionengine-46f43 --force; done
    ```
-   This also locks the host panel again, so type your word once more.
+   Do not remove the whole game: that deletes the predictions collected so far.
 2. Open the big screen. It shows **JOIN NOW** and the QR code. **Click the CLICK FOR SOUND button (top right) so it reads SOUND ON**, and turn the laptop volume up. Do this again after any reload. Keep "reduce motion" off on that laptop, or the animations will not play.
 3. Open the host panel on your phone and unlock it. The state shows **ARRIVAL**.
-4. Scan the QR code with a phone on mobile data.
+4. Scan the big screen's QR code with a phone on mobile data. Only this code (or the address ending `?room=1`) makes predictions appear live.
 5. Laptop on power, sleep and notifications off.
 
 ## The show (host panel buttons)
@@ -36,7 +36,8 @@ Backup address: https://humain-predictionengine.netlify.app/predictionengine2027
 - **False start:** RESET QUIZ (tap twice). Wipes live answers and scores; warm-up scores stay.
 - **A card falls flat:** ALL CARDS, then SHOW a reserve card.
 - **FREEZE** (tap twice) locks the board early. PREDICT reopens it. The real freeze is automatic at midnight on New Year's Eve, Sydney time.
-- **Moderation:** flagged predictions are hidden and listed first with FLAGGED. RESTORE or leave hidden. HIDE anything else.
+- **Moderation:** predictions from phones that scanned the big screen's code appear live. All others show as WAITING until you tap APPROVE (or HIDE). Flagged predictions are hidden and listed first with FLAGGED. RESTORE or leave hidden. HIDE anything else.
+- **Someone in the room is stuck on WAITING:** ask them to scan the big screen's code again, then post. Approve anything already sent.
 
 ## If something goes wrong
 - **Wi-Fi drops:** screens show RECONNECTING and recover by themselves. Ask people to use mobile data. Tether the projector laptop if needed.

@@ -1,7 +1,7 @@
 import './host.css';
 import type { Store } from '../data/store';
 import { loadFlagger } from '../shared/flags';
-import { deckCards } from '../shared/game';
+import { awaiting, deckCards } from '../shared/game';
 import { STATES, type StateName } from '../shared/types';
 import { paint, paintList } from '../ui/paint';
 import { toast } from '../ui/toast';
@@ -79,20 +79,21 @@ export function mountHost(root: HTMLElement, store: Store) {
     $('#hconn').hidden = store.connected;
     const votes = Object.values(s.votes).reduce((n, v) => n + Object.keys(v).length, 0);
     const all = Object.entries(s.preds).map(([id, p]) => ({
-      id, p, flagged: !p.seed && (!!store.flags[id] || !!isFlagged?.(p.text)), hidden: !!s.hidden[id], restored: !!s.restored[id],
+      id, p, flagged: !p.seed && (!!store.flags[id] || !!isFlagged?.(p.text)), hidden: !!s.hidden[id], restored: !!s.restored[id], waiting: awaiting(s, id, p),
     }));
-    all.sort((a, b) => Number(b.flagged && !b.restored) - Number(a.flagged && !a.restored) || b.p.ts - a.p.ts);
-    const review = all.filter((x) => x.flagged && !x.restored).length;
+    all.sort((a, b) => Number(b.flagged && !b.restored) - Number(a.flagged && !a.restored) || Number(b.waiting) - Number(a.waiting) || b.p.ts - a.p.ts);
+    const review = all.filter((x) => x.waiting || (x.flagged && !x.restored)).length;
+    const button = (act: 'hide' | 'restore', label: string, id: string) => `<button class="act ${act} px" data-act="${act}" data-id="${esc(id)}"${off}>${label}</button>`;
     paint($('#hcounts'), ([['PLAYERS', Object.values(s.players).filter((p) => p.name).length], ['PREDICTIONS', all.length], ['VOTES', votes], ['TO REVIEW', review]] as const)
       .map(([k, v]) => `<div class="hc${k === 'TO REVIEW' && v ? ' alert' : ''}"><b>${v}</b><span class="px">${k}</span></div>`).join(''));
     paint($('#states'), STATES.map((n) => `<button class="act st px${state === n ? ' on' : ''}" aria-pressed="${state === n}" data-act="state" data-id="${n}"${off}>${armed === `state${n}` ? 'TAP AGAIN' : LABEL[n]}</button>`).join(''));
     const quiz = $('#quiz'), wasOpen = !!quiz.querySelector('details[open]');
     if (paint(quiz, quizHtml(off)) && wasOpen) quiz.querySelector('details')!.open = true;
     paintList($('#queue'), all.slice(0, shown).map((x) => ({
-      id: x.id, cls: `qi${x.hidden ? ' is-hidden' : ''}${x.flagged && !x.restored ? ' is-flagged' : ''}`,
-      html: `<div class="qh">${x.flagged && !x.restored ? '<span class="hchip flag px">FLAGGED</span>' : ''}${x.hidden ? '<span class="hchip hid px">HIDDEN</span>' : ''}</div>
+      id: x.id, cls: `qi${x.waiting ? ' is-waiting' : ''}${x.hidden ? ' is-hidden' : ''}${x.flagged && !x.restored ? ' is-flagged' : ''}`,
+      html: `<div class="qh">${x.flagged && !x.restored ? '<span class="hchip flag px">FLAGGED</span>' : ''}${x.hidden ? '<span class="hchip hid px">HIDDEN</span>' : ''}${x.waiting ? '<span class="hchip wait px">WAITING</span>' : ''}</div>
         <p class="qt">${esc(x.p.text)}</p><div class="qf"><span class="qm">by ${esc(x.p.seed ? 'humAIn' : s.players[x.p.pid]?.name ?? '???')}</span>
-        <button class="act ${x.hidden ? 'restore' : 'hide'} px" data-act="${x.hidden ? 'restore' : 'hide'}" data-id="${esc(x.id)}"${off}>${x.hidden ? 'RESTORE' : 'HIDE'}</button></div>`,
+        ${x.hidden ? button('restore', 'RESTORE', x.id) : `${x.waiting ? button('restore', 'APPROVE', x.id) : ''}${button('hide', 'HIDE', x.id)}`}</div>`,
     })));
     $('#qempty').hidden = all.length > 0;
     $('#hmore').hidden = all.length <= shown;

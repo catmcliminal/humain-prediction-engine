@@ -109,7 +109,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
     if (P.busy || !store.canAct()) return;
     P.busy = true; inp.value = '';
     SFX.init(); SFX.start(); vibrate(30);
-    try { await store.submit(text); toast('PREDICTION FIRED'); } catch (err) {
+    try { const live = store.inRoom(); await store.submit(text); toast(live ? 'PREDICTION FIRED' : 'SENT. IT SHOWS ONCE APPROVED', live ? undefined : 3000); } catch (err) {
       console.error(err); inp.value = text; toast('NOT SENT. WAIT A MOMENT AND TRY AGAIN', 3000);
     }
     P.busy = false; render();
@@ -198,7 +198,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
         <span>${x.level ? `${x.avg!.toFixed(1)} from ${x.total} rating${x.total === 1 ? '' : 's'}` : 'No ratings yet'}</span><div class="meter" aria-hidden="true">${meter}</div></div></header>
       <p class="pred-text">${esc(x.text)}</p>
       <p class="pred-by">${ship(esc(x.color), 2)}<span style="color:${esc(x.color)}">${esc(x.author)}</span>${x.cyber ? `<em class="px cybertxt">CYBERBONKERS ${x.cyber}</em>` : ''}</p>
-      ${mine ? '<p class="px pred-mine">YOURS</p>' : frozen ? '' : `<div class="pred-act">${levelButtons(x.id, my, !!off)}
+      ${mine ? `<p class="px pred-mine">${x.pending ? 'WAITING FOR APPROVAL' : 'YOURS'}</p>` : frozen ? '' : `<div class="pred-act">${levelButtons(x.id, my, !!off)}
         <button class="cyb px${tagged ? ' on' : ''}" aria-pressed="${tagged}" data-act="tag" data-id="${esc(x.id)}"${off}>${sprite(6, 3)}CYBERBONKERS</button></div>`}</article>`;
   }
 
@@ -224,7 +224,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
       $('#fired').textContent = `YOU HAVE MADE ${n} PREDICTION${n === 1 ? '' : 'S'}`;
       return;
     }
-    const all = newest(board(s, P.isFlagged));
+    const all = newest(board(s, P.isFlagged, tab === 'mine' ? store.me : undefined));
     const list = tab === 'mine' ? all.filter((x) => x.pid === store.me) : all;
     // New arrivals wait behind a button, so cards never move under a thumb.
     if (!P.shown.size || tab === 'mine') P.shown = new Set(list.map((x) => x.id));

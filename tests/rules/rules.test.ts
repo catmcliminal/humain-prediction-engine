@@ -107,6 +107,16 @@ describe('predictions, votes and tags', () => {
     await assertSucceeds(post('alice', 'p2'));
     await assertFails(db(live, 'alice').ref(`${G}/predictions/p1/text`).set('edited afterwards'));
   });
+  it('a prediction may carry the room marker, and nothing else', async () => {
+    await state('PREDICT');
+    const send = (uid: string, id: string, extra: object) => db(live, uid).ref(G).update({
+      [`predictions/${id}`]: { pid: uid, text: 'a perfectly valid prediction', ts: TS, ...extra }, [`players/${uid}/lastPost`]: TS,
+    });
+    await assertFails(send('alice', 'p1', { room: 'yes' }));
+    await assertFails(send('alice', 'p1', { approved: true }));
+    await assertSucceeds(send('alice', 'p1', { room: true }));
+    await assertFails(db(live, 'bob').ref(`${G}/restored/p1`).set(true));
+  });
   it('vote on others only, change your mind, tag once', async () => {
     await state('PREDICT');
     await post('alice', 'p1');

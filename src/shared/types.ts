@@ -5,7 +5,8 @@ export type Answer = 'real' | 'fake';
 export type Vote = 1 | 2 | 3 | 4 | 5;
 
 export interface Player { name: string; color: string; ts?: number; lastPost?: number }
-export interface Prediction { pid: string; text: string; ts: number; seed?: boolean }
+/** room: posted by a phone that scanned the big screen's QR code, so it needs no approval. */
+export interface Prediction { pid: string; text: string; ts: number; seed?: boolean; room?: boolean }
 export interface Card { text: string; deck: 'arrival' | 'live' | 'reserve'; order: number }
 export interface CardKey { real: boolean; explainer: string; source?: string; seed?: string; seedText?: string }
 export interface Show { name?: StateName; card?: string | null }

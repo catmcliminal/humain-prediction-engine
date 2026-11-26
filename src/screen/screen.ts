@@ -5,6 +5,7 @@ import type { Store } from '../data/store';
 import { ANSWER_WINDOW_MS, LEVELS } from '../shared/constants';
 import { loadFlagger } from '../shared/flags';
 import { board, leader, mostLikely, mythBusters, newest, rising, topCyber, type BoardItem } from '../shared/game';
+import { roomUrl } from '../shared/room';
 import type { StateName } from '../shared/types';
 import { slam } from '../ui/juice';
 import { SFX } from '../ui/sound';
@@ -31,7 +32,7 @@ export function mountScreen(root: HTMLElement, store: Store) {
     </aside></div>
   <div id="conn" class="conn px" role="status" hidden></div>`;
   $('#url').textContent = brand.joinUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  try { $('#qr').innerHTML = qrSvg(brand.joinUrl); } catch { $('#qr').hidden = true; } // the URL text remains
+  try { $('#qr').innerHTML = qrSvg(roomUrl(brand.joinUrl)); } catch { $('#qr').hidden = true; } // the URL text remains
 
   const drawMother = mothership($('#mother'));
   const board10 = results($('#results'));

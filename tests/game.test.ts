@@ -1,3 +1,4 @@
+import { ROOM_MS, roomUrl, stillInRoom } from '../src/shared/room';
 import { describe, expect, it } from 'vitest';
 import { FREEZE_AT } from '../src/shared/constants';
 import { leader, mostLikely, board, mythBusters, pointsFor, rising, stateAt, topCyber } from '../src/shared/game';
@@ -54,7 +55,7 @@ describe('leader', () => {
 
 describe('board', () => {
   const s = base();
-  s.preds = { p: { pid: 'a', text: 'one', ts: 10 }, q: { pid: 'seed', seed: true, text: 'two', ts: 5 }, h: { pid: 'b', text: 'hidden', ts: 1 } };
+  s.preds = { p: { pid: 'a', text: 'one', ts: 10, room: true }, q: { pid: 'seed', seed: true, text: 'two', ts: 5 }, h: { pid: 'b', text: 'hidden', ts: 1 } };
   s.hidden = { h: true };
   s.votes = { q: { a: 5, b: 2, c: 4 } };
   s.tags = { p: { b: true } };
@@ -66,6 +67,32 @@ describe('board', () => {
     expect(items[0].level).toBeNull();
     expect(topCyber(items).map((x) => x.id)).toEqual(['p']);
     expect(rising(items, 60_000).length).toBe(2);
+  });
+});
+
+describe('approval', () => {
+  const s = base();
+  s.preds = {
+    room: { pid: 'a', text: 'from the room', ts: 3, room: true }, pub: { pid: 'b', text: 'from the public', ts: 2 },
+    ok: { pid: 'b', text: 'approved public', ts: 1 }, no: { pid: 'b', text: 'hidden public', ts: 0 },
+  };
+  s.restored = { ok: true };
+  s.hidden = { no: true };
+  it('shows room predictions live and holds public ones until approved', () => {
+    expect(board(s).map((x) => x.id)).toEqual(['room', 'ok']);
+  });
+  it('lets only the author see their own waiting prediction, marked as pending', () => {
+    expect(board(s, undefined, 'b').filter((x) => x.pending).map((x) => x.id)).toEqual(['pub']);
+    expect(board(s, undefined, 'a').map((x) => x.id)).toEqual(['room', 'ok']);
+  });
+  it('still holds a flagged room prediction', () => {
+    expect(board(s, () => true).map((x) => x.id)).toEqual(['ok']);
+  });
+  it('keeps the room marker for the event only', () => {
+    expect(stillInRoom(1000, 1000 + ROOM_MS - 1)).toBe(true);
+    expect(stillInRoom(1000, 1000 + ROOM_MS)).toBe(false);
+    expect(stillInRoom(0, 5)).toBe(false);
+    expect(roomUrl('https://x/y/')).toBe('https://x/y/?room=1');
   });
 });
 

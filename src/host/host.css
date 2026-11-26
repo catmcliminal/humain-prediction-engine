@@ -14,15 +14,17 @@
 .queue{list-style:none;display:flex;flex-direction:column;gap:12px}
 .qi{border:2px solid var(--line);background:rgba(11,4,32,.9);padding:12px}
 .qi.is-flagged{border-color:var(--m);box-shadow:0 0 12px rgba(255,43,214,.35)}
+.qi.is-waiting{border-color:var(--c)}
 .qi.is-hidden{opacity:.8;border-style:dashed}
 .qh{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px;font-size:10px}
 .qh time{margin-left:auto;color:var(--dim)}
 .hchip{font-size:10px;padding:3px 6px;background:var(--line);color:var(--ink)}
 .hchip.flag{background:var(--m);color:#000}
 .hchip.hid{background:var(--y);color:#000}
+.hchip.wait{background:var(--c);color:#000}
 .hchip.ok{background:var(--g);color:#000}
 .qt{font-size:26px;line-height:1.05;margin-bottom:8px;overflow-wrap:anywhere}
-.qf{display:flex;align-items:center;gap:12px}
+.qf{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .qm{font-size:19px;color:var(--dim);flex:1}
 .act{min-width:110px;min-height:48px;padding:12px;font-size:12px;border:3px solid}
 .act.hide{border-color:var(--m);color:var(--m)}

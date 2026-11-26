@@ -38,12 +38,18 @@ export function mythBusters(s: GameState, isFlagged: (t: string) => boolean = ()
 }
 
 /** total = ratings received; avg and level (the rounded average) are null until someone rates it. */
-export interface BoardItem extends Prediction { id: string; author: string; color: string; total: number; avg: number | null; level: number | null; cyber: number }
+export interface BoardItem extends Prediction { id: string; author: string; color: string; total: number; avg: number | null; level: number | null; cyber: number; pending: boolean }
 
-/** Predictions that may be shown: not hidden, and not flagged (unless the host restored them). */
-export function board(s: GameState, isFlagged: (t: string) => boolean = () => false): BoardItem[] {
+/** A public prediction (not from the room) that the host has neither approved nor hidden. */
+export const awaiting = (s: GameState, id: string, p: Prediction) => !p.seed && !p.room && !s.restored[id] && !s.hidden[id];
+
+/**
+ * Predictions that may be shown: not hidden, and either a seed, approved by the host (restored), or posted in the
+ * room and not flagged. Pass `me` to also include that player's own predictions still awaiting approval.
+ */
+export function board(s: GameState, isFlagged: (t: string) => boolean = () => false, me?: string): BoardItem[] {
   return Object.entries(s.preds)
-    .filter(([id, p]) => !s.hidden[id] && (p.seed || s.restored[id] || !isFlagged(p.text)))
+    .filter(([id, p]) => !s.hidden[id] && (p.seed || s.restored[id] || (p.room ? !isFlagged(p.text) : !!me && p.pid === me)))
     .map(([id, p]) => {
       const v = Object.values(s.votes[id] ?? {});
       const rs = v.filter((x) => typeof x === 'number');
@@ -53,6 +59,7 @@ export function board(s: GameState, isFlagged: (t: string) => boolean = () => fa
         id, ...p, author: p.seed ? 'humAIn' : who?.name ?? '???', color: who?.color ?? '#00e5ff',
         total: rs.length, avg, level: avg === null ? null : Math.round(avg),
         cyber: Object.keys(s.tags[id] ?? {}).length,
+        pending: awaiting(s, id, p),
       };
     });
 }

@@ -7,6 +7,7 @@ import {
 import { config } from '../config';
 import { FREEZE_AT, SEED_AUTHOR } from '../shared/constants';
 import { deckCards, stateAt } from '../shared/game';
+import { ROOM_PARAM, stillInRoom } from '../shared/room';
 import { emptyState, type Answer, type GameState, type StateName, type Vote } from '../shared/types';
 
 type Listener = () => void;
@@ -43,6 +44,23 @@ export class Store {
   /** Server verdict on this player's callsign (written by the onPlayerJoined Function). */
   joinVerdict: { ok?: boolean; rejected?: string; ts?: number } | null = null;
   private t: ReturnType<typeof setTimeout> | undefined;
+
+  /** When this device last opened the room's QR link (0 = never). Kept so a reload stays in the room. */
+  private roomAt = Store.readRoom();
+  private static readRoom() {
+    const key = `pe-room-${config.gameId}`, url = new URL(location.href);
+    const scanned = url.searchParams.has(ROOM_PARAM);
+    if (scanned) {
+      // Taken out of the address bar, so a copied link does not carry it.
+      url.searchParams.delete(ROOM_PARAM);
+      history.replaceState(history.state, '', url);
+    }
+    try {
+      if (scanned) localStorage.setItem(key, String(Date.now()));
+      return Number(localStorage.getItem(key)) || 0;
+    } catch { return scanned ? Date.now() : 0; }
+  }
+  inRoom() { return stillInRoom(this.roomAt, Date.now()); }
 
   on(fn: Listener) { this.subs.push(fn); }
   private emit() {
@@ -173,7 +191,7 @@ export class Store {
   /* ---------- host actions ---------- */
   /** HIDE: hidden on, restore marker off. */
   hide(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: true, [`restored/${id}`]: null }); }
-  /** RESTORE: hidden off, restore marker on (the marker stops phones pre-hiding flagged text). */
+  /** APPROVE or RESTORE: hidden off, restore marker on (the marker publishes a public or flagged prediction). */
   restore(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: null, [`restored/${id}`]: true }); }
 
   /** Moving past arrival reveals the arrival cards (so their scores count). Opening predictions loads the seeds. */
@@ -233,7 +251,7 @@ export class Store {
   submit(text: string) {
     const id = push(this.r('predictions')).key as string;
     return update(ref(this.db, this.base), {
-      [`predictions/${id}`]: { pid: this.me, text, ts: serverTimestamp() },
+      [`predictions/${id}`]: { pid: this.me, text, ts: serverTimestamp(), ...(this.inRoom() ? { room: true } : {}) },
       [`players/${this.me}/lastPost`]: serverTimestamp(),
     });
   }

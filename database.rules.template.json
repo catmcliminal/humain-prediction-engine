@@ -103,6 +103,7 @@
             "text": { ".validate": "newData.isString()" },
             "ts": { ".validate": "newData.val() === now" },
             "seed": { ".validate": "newData.val() === true" },
+            "room": { ".validate": "newData.val() === true" },
             "$other": { ".validate": false }
           }
         },
