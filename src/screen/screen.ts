@@ -68,7 +68,7 @@ export function mountScreen(root: HTMLElement, store: Store) {
   }
 
   function stage(state: StateName, items: BoardItem[], joined: number) {
-    if (state === 'ARRIVAL') return title('JOIN NOW', `${joined} player${joined === 1 ? '' : 's'} in. How closely were you watching 2026?`);
+    if (state === 'ARRIVAL') return title('JOIN NOW', `${joined} player${joined === 1 ? '' : 's'} in. How much attention were you paying to the AI news in 2026?`);
     if (state === 'PAUSED') return title('BACK AT 5', 'Scan the code if you have not joined.');
     if (state === 'LIVE_QUIZ') return quiz();
     if (state === 'QUIZ_RESULTS') return `<div class="center wide">${ranks(10, 'MYTH-BUSTER TOP 10')}</div>`;
