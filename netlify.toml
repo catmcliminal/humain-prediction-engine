@@ -1,5 +1,6 @@
 [build]
-  command = "npx vite build"
+  # The last two steps give the host panel a real page at /predictionengine2027/host (the app reads the path).
+  command = "npx vite build && mkdir -p dist/predictionengine2027/host && cp dist/predictionengine2027/index.html dist/predictionengine2027/host/index.html"
   publish = "dist"
 
 # The game lives under /predictionengine2027/ (build output is dist/predictionengine2027).
@@ -8,9 +9,3 @@
   to = "/predictionengine2027/"
   status = 301
   force = false
-
-# The host panel's address (the app reads the path and shows the password gate).
-[[redirects]]
-  from = "/predictionengine2027/host"
-  to = "/predictionengine2027/index.html"
-  status = 200
