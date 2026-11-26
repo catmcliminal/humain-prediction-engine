@@ -7,7 +7,7 @@ import { cleanPrediction, predictionError } from '../shared/text';
 import type { Answer, StateName, Vote } from '../shared/types';
 import { verdictBuzz } from '../ui/juice';
 import { SFX } from '../ui/sound';
-import { levelColor, ship } from '../ui/sprites';
+import { levelColor, ship, sprite } from '../ui/sprites';
 import { paint, paintList } from '../ui/paint';
 import { announce, toast } from '../ui/toast';
 import { $, esc, vibrate } from '../ui/util';
@@ -52,7 +52,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
     <section class="view" id="v-board" hidden>
       <div id="v-write">
         <label class="prefix" for="predInp" style="display:block">IN 2027...</label>
-        <textarea id="predInp" class="inp" maxlength="${PREDICTION_MAX}" placeholder="a bank's chatbot asks for a pay rise"></textarea>
+        <textarea id="predInp" class="inp" maxlength="${PREDICTION_MAX}" placeholder="I predict that..."></textarea>
         <div class="count" id="count">0/${PREDICTION_MAX}</div>
         <button class="big" id="fireBtn">FIRE</button>
         <p class="fired" id="fired"></p>
@@ -65,7 +65,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
         <button class="big more" id="moreBtn" hidden>SHOW MORE</button>
       </div>
     </section>
-    <nav class="tabs" id="tabs" aria-label="Game views" hidden>${(['write', 'vote', 'mine'] as Tab[]).map((t) => `<button data-tab="${t}">${t === 'vote' ? 'RATE' : t.toUpperCase()}</button>`).join('')}</nav>`;
+    <nav class="tabs" id="tabs" aria-label="Game views" hidden>${(['write', 'vote', 'mine'] as Tab[]).map((t) => `<button data-tab="${t}">${t === 'vote' ? 'RATE' : t === 'write' ? 'PREDICT' : t.toUpperCase()}</button>`).join('')}</nav>`;
     $('#sndBtn').addEventListener('click', () => {
       SFX.setOn(!SFX.on); SFX.init();
       $('#sndBtn').textContent = SFX.on ? 'SND ON' : 'SND OFF';
@@ -130,7 +130,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
     `<button class="big ans ${v}" data-act="answer" data-id="${id}" data-v="${v}"${off || !store.canAct() ? ' disabled' : ''}>${v.toUpperCase()}</button>`).join('')}</div>`;
 
   const levelButtons = (id: string, mine: Vote | undefined, off: boolean) => `<p class="px lv-q">HOW WILD IS IT?</p><div class="lvs">${RATINGS.map((n) =>
-    `<button class="lv${mine === n ? ' on' : ''}" style="--rc:${levelColor(n)}" aria-pressed="${mine === n}" data-act="vote" data-id="${esc(id)}" data-v="${n}"${off ? ' disabled' : ''}><b class="px">${n}</b>${LEVELS[n - 1]}</button>`).join('')}</div>`;
+    `<button class="lv${mine === n ? ' on' : ''}" style="--rc:${levelColor(n)}" aria-pressed="${mine === n}" data-act="vote" data-id="${esc(id)}" data-v="${n}" aria-label="${LEVELS[n - 1]}, ${n} of 5"${off ? ' disabled' : ''}>${sprite(n, 3)}<span>${LEVELS[n - 1]}</span></button>`).join('')}</div>`;
 
   function reveal(id: string) {
     const s = store.state, key = s.keys[id], mine = s.answers[id]?.[store.me];
@@ -191,10 +191,15 @@ export function mountPhone(root: HTMLElement, store: Store) {
   function cardHtml(x: BoardItem, frozen: boolean) {
     const mine = x.pid === store.me, my = store.state.votes[x.id]?.[store.me], tagged = !!store.state.tags[x.id]?.[store.me];
     const off = frozen || !store.canAct() ? ' disabled' : '';
-    const stats = `${x.level ? `<span style="color:${levelColor(x.level)}">${LEVELS[x.level - 1]}</span> · ${x.avg!.toFixed(1)} from ${x.total} rating${x.total === 1 ? '' : 's'}` : 'Not rated yet'}${x.cyber ? ` · <span class="cybertxt">CYBERBONKERS ${x.cyber}</span>` : ''}`;
-    return `<div class="vc"${x.level ? ` style="border-color:${levelColor(x.level)}"` : ''}><p class="vc-t">${esc(x.text)}</p><p class="vc-m">by <span style="color:${esc(x.color)}">${esc(x.author)}</span><br>${stats}</p>
-      ${mine ? '<p class="px vc-mine">YOURS</p>' : frozen ? '' : `${levelButtons(x.id, my, !!off)}
-        <button class="cyb px${tagged ? ' on' : ''}" aria-pressed="${tagged}" data-act="tag" data-id="${esc(x.id)}"${off}>CYBERBONKERS</button>`}</div>`;
+    // The header shows the crowd's call: that level's alien, its name, and a five-step meter filled to the average.
+    const meter = RATINGS.map((n) => `<i style="--rc:${levelColor(n)};--fill:${Math.round(100 * Math.min(1, Math.max(0, (x.avg ?? 0) - (n - 1))))}%"></i>`).join('');
+    return `<article class="pred${x.level ? '' : ' unrated'}"${x.level ? ` style="--lc:${levelColor(x.level)}"` : ''}>
+      <header class="pred-head">${sprite(x.level ?? 1, 6)}<div class="pred-call"><b class="px">${x.level ? LEVELS[x.level - 1] : 'UNRATED'}</b>
+        <span>${x.level ? `${x.avg!.toFixed(1)} from ${x.total} rating${x.total === 1 ? '' : 's'}` : 'No ratings yet'}</span><div class="meter" aria-hidden="true">${meter}</div></div></header>
+      <p class="pred-text">${esc(x.text)}</p>
+      <p class="pred-by">${ship(esc(x.color), 2)}<span style="color:${esc(x.color)}">${esc(x.author)}</span>${x.cyber ? `<em class="px cybertxt">CYBERBONKERS ${x.cyber}</em>` : ''}</p>
+      ${mine ? '<p class="px pred-mine">YOURS</p>' : frozen ? '' : `<div class="pred-act">${levelButtons(x.id, my, !!off)}
+        <button class="cyb px${tagged ? ' on' : ''}" aria-pressed="${tagged}" data-act="tag" data-id="${esc(x.id)}"${off}>${sprite(6, 3)}CYBERBONKERS</button></div>`}</article>`;
   }
 
   function renderBoard(frozen: boolean) {

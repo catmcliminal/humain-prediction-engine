@@ -14,7 +14,7 @@ export function mothership(el: HTMLElement) {
   return (lead: BoardItem | undefined) => {
     next = lead
       ? `<h3 class="px">WILDEST SO FAR</h3><p class="ms-t">${esc(lead.text)}</p><p class="ms-m"><span style="color:${esc(lead.color)}">${esc(lead.author)}</span><b style="color:${levelColor(lead.level!)}">${LEVELS[lead.level! - 1]} ${lead.avg!.toFixed(1)} · ${lead.total} RATINGS</b></p>`
-      : '<h3 class="px">MOTHERSHIP</h3><p class="ms-t dimtxt">Awaiting something unhinged. Rate predictions on your phone.</p>';
+      : '<h3 class="px">MOTHERSHIP</h3><p class="ms-t dimtxt">Send a prediction into orbit. Rate predictions on your phone.</p>';
     const now = lead?.id ?? null;
     if (id === undefined || id === now || reducedMotion()) { id = now; if (!busy) set(); return; }
     id = now;

@@ -66,7 +66,7 @@ export const rising = (items: BoardItem[], now: number) => {
 /** The wildest prediction: highest average rating, then the most ratings. None until one has enough ratings. */
 export const leader = (items: BoardItem[]) =>
   items.filter((x) => x.total >= LEADER_MIN_RATINGS).sort((a, b) => b.avg! - a.avg! || b.total - a.total || b.cyber - a.cyber || a.ts - b.ts)[0] as BoardItem | undefined;
-/** Closest to PLAUSIBLE first. */
+/** Closest to CERTAIN first. */
 export const mostLikely = (items: BoardItem[]) =>
   items.filter((x) => x.total >= FINAL_MIN_RATINGS).sort((a, b) => a.avg! - b.avg! || b.total - a.total || a.ts - b.ts);
 export const topCyber = (items: BoardItem[], n = 5) => items.filter((x) => x.cyber > 0).sort((a, b) => b.cyber - a.cyber || b.ts - a.ts).slice(0, n);

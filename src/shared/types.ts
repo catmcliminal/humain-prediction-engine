@@ -1,7 +1,7 @@
 export const STATES = ['ARRIVAL', 'PAUSED', 'LIVE_QUIZ', 'QUIZ_RESULTS', 'PREDICT', 'FROZEN'] as const;
 export type StateName = (typeof STATES)[number];
 export type Answer = 'real' | 'fake';
-/** How wild a player rates a prediction: 1 PLAUSIBLE to 5 UNHINGED. */
+/** How wild a player rates a prediction: 1 CERTAIN to 5 UNHINGED. */
 export type Vote = 1 | 2 | 3 | 4 | 5;
 
 export interface Player { name: string; color: string; ts?: number; lastPost?: number }

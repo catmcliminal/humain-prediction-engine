@@ -47,7 +47,7 @@ describe('leader', () => {
     expect(leader([item('a', 3, 5), item('b', 4, 2)])).toMatchObject({ id: 'b' });
     expect(leader([item('a', 4, 2), item('b', 4, 3)])).toMatchObject({ id: 'b' });
   });
-  it('lists the most plausible first once three people have rated', () => {
+  it('lists the most certain first once three people have rated', () => {
     expect(mostLikely([item('a', 4, 3), item('b', 1.5, 3), item('c', 1, 2)]).map((x) => x.id)).toEqual(['b', 'a']);
   });
 });
