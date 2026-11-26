@@ -4,11 +4,14 @@ import { brand } from '../brand.config';
 import type { Store } from '../data/store';
 import { ANSWER_WINDOW_MS } from '../shared/constants';
 import { loadFlagger } from '../shared/flags';
-import { board, mythBusters, newest, rising, topCyber, type BoardItem } from '../shared/game';
+import { board, leader, mythBusters, newest, rising, topCyber, type BoardItem } from '../shared/game';
 import type { StateName } from '../shared/types';
+import { slam } from '../ui/juice';
+import { SFX } from '../ui/sound';
 import { mothershipSvg } from '../ui/sprites';
 import { paint } from '../ui/paint';
 import { $, esc } from '../ui/util';
+import { flyer, mothership, results } from './effects';
 
 const ROTATE_MS = 8000;
 const PER_PAGE = 4;
@@ -20,8 +23,8 @@ export function mountScreen(root: HTMLElement, store: Store) {
 
   root.innerHTML = `
   <header class="sh"><div><div class="presents px">${esc(brand.presentsLine)}</div><h1>${esc(brand.title.first)} <em>${esc(brand.title.second)}</em></h1></div>
-    <div class="stats"><div class="stat"><b id="st-p">0</b><span>PLAYERS</span></div><div class="stat"><b id="st-n">0</b><span>PREDICTIONS</span></div><div class="stat"><b id="st-v">0</b><span>VOTES</span></div></div></header>
-  <div class="sm"><div id="stage" class="stage"></div>
+    <div class="stats"><div class="stat"><b id="st-p">0</b><span>PLAYERS</span></div><div class="stat"><b id="st-n">0</b><span>PREDICTIONS</span></div><div class="stat"><b id="st-v">0</b><span>VOTES</span></div></div><button id="snd" class="snd px"></button></header>
+  <div class="sm"><div class="main"><div id="mother" hidden></div><div id="stage" class="stage"></div><div id="results" class="stage center wide" hidden></div></div>
     <aside class="side">
       <div class="join"><div id="qr" aria-hidden="true"></div><p>JOIN ON YOUR PHONE<b id="url"></b></p></div>
       <div id="sidebox"></div>
@@ -29,6 +32,39 @@ export function mountScreen(root: HTMLElement, store: Store) {
   <div id="conn" class="conn px" role="status" hidden></div>`;
   $('#url').textContent = brand.joinUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
   try { $('#qr').innerHTML = qrSvg(brand.joinUrl); } catch { $('#qr').hidden = true; } // the URL text remains
+
+  const drawMother = mothership($('#mother'));
+  const board10 = results($('#results'));
+  const find = (id: string) => board(store.state, isFlagged).find((x) => x.id === id);
+  const ships = flyer(find);
+  let seenPreds: Set<string> | undefined;
+  const slammed = new Set<string>();
+
+  // Browsers stay silent until someone clicks the page once.
+  const sndLabel = () => { $('#snd').textContent = SFX.audible ? 'SOUND ON' : 'CLICK FOR SOUND'; };
+  $('#snd').addEventListener('click', () => {
+    const wasAudible = SFX.audible;
+    SFX.setOn(!wasAudible); SFX.init();
+    if (!wasAudible) setTimeout(() => { SFX.start(); sndLabel(); }, 60);
+    sndLabel();
+  });
+
+  /** One-off effects for things that have just happened. Nothing replays when the page is reloaded. */
+  function effects(state: StateName, items: BoardItem[]) {
+    const s = store.state, first = !seenPreds;
+    seenPreds ??= new Set();
+    for (const x of items) {
+      if (seenPreds.has(x.id)) continue;
+      if (!first && !x.seed && !isFlagged) continue; // wait for the word filter before anything flies
+      seenPreds.add(x.id);
+      if (!first && !x.seed && state === 'PREDICT') ships.add(x.id);
+    }
+    if (state !== 'PREDICT') ships.clear();
+    for (const id of slammed) if (!s.revealed[id]) slammed.delete(id); // a quiz reset lets a card slam again
+    if (first) for (const id of Object.keys(s.revealed)) slammed.add(id);
+    const id = s.show.card;
+    if (state === 'LIVE_QUIZ' && id && s.revealed[id] && s.keys[id] && !slammed.has(id)) { slammed.add(id); slam(s.keys[id].real); }
+  }
 
   const ranks = (n: number, title: string) => {
     const rows = mythBusters(store.state, isFlagged).slice(0, n);
@@ -69,9 +105,8 @@ export function mountScreen(root: HTMLElement, store: Store) {
 
   function stage(state: StateName, items: BoardItem[], joined: number) {
     if (state === 'ARRIVAL') return title('JOIN NOW', `${joined} player${joined === 1 ? '' : 's'} in. How much attention were you paying to the AI news in 2026?`);
-    if (state === 'PAUSED') return title('BACK AT 5', 'Scan the code if you have not joined.');
+    if (state === 'PAUSED') return title('BACK AT 5', 'Scan the code to play.');
     if (state === 'LIVE_QUIZ') return quiz();
-    if (state === 'QUIZ_RESULTS') return `<div class="center wide">${ranks(10, 'MYTH-BUSTER TOP 10')}</div>`;
     if (state === 'PREDICT') return ticker(items);
     const likely = items.filter((x) => x.total >= 3).sort((a, b) => b.pct! - a.pct! || b.total - a.total).slice(0, PER_PAGE);
     return `<h2 class="kicker px">FINAL BOARD: MOST LIKELY</h2><div class="grid">${likely.map(predCard).join('') || '<p class="sub">Locked. See you in 2027.</p>'}</div>`;
@@ -87,7 +122,15 @@ export function mountScreen(root: HTMLElement, store: Store) {
     $('#st-p').textContent = String(joined);
     $('#st-n').textContent = String(items.length);
     $('#st-v').textContent = String(Object.values(s.votes).reduce((n, v) => n + Object.keys(v).length, 0));
-    paint($('#stage'), stage(state, items, joined));
+    effects(state, items);
+    const onBoard = state === 'PREDICT' || state === 'FROZEN';
+    $('#mother').hidden = !onBoard;
+    if (onBoard) drawMother(leader(items));
+    $('#stage').hidden = state === 'QUIZ_RESULTS';
+    $('#results').hidden = state !== 'QUIZ_RESULTS';
+    if (state === 'QUIZ_RESULTS') board10.update(mythBusters(s, isFlagged).slice(0, 10), Date.now());
+    else { board10.reset(); paint($('#stage'), stage(state, items, joined)); }
+    sndLabel();
     const cyber = topCyber(items);
     paint($('#sidebox'), state === 'PREDICT' || state === 'FROZEN'
       ? `<h2>TOP CYBERBONKERS</h2>${cyber.map((x, i) => `<div class="cbrow"><b class="px">${i + 1}</b><p>${esc(x.text)}</p><span class="px">${x.cyber}</span></div>`).join('') || '<p class="dimtxt">Tag the wildest ones on your phone.</p>'}`

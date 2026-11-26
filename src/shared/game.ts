@@ -61,4 +61,7 @@ export const rising = (items: BoardItem[], now: number) => {
   const heat = (x: BoardItem) => (x.total + 2 * x.cyber) / (1 + (now - x.ts) / 60_000);
   return [...items].filter((x) => heat(x) > 0).sort((a, b) => heat(b) - heat(a));
 };
+/** The most-backed prediction: most "will happen" votes, then the higher share. None until someone backs one. */
+export const leader = (items: BoardItem[]) =>
+  items.filter((x) => x.will > 0).sort((a, b) => b.will - a.will || b.pct! - a.pct! || b.cyber - a.cyber || a.ts - b.ts)[0] as BoardItem | undefined;
 export const topCyber = (items: BoardItem[], n = 5) => items.filter((x) => x.cyber > 0).sort((a, b) => b.cyber - a.cyber || b.ts - a.ts).slice(0, n);

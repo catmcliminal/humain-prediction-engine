@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREEZE_AT } from '../src/shared/constants';
-import { board, mythBusters, pointsFor, rising, stateAt, topCyber } from '../src/shared/game';
+import { leader, board, mythBusters, pointsFor, rising, stateAt, topCyber } from '../src/shared/game';
 import { nameKey, callsignOk, cleanCallsign } from '../src/shared/text';
 import { emptyState, type GameState } from '../src/shared/types';
 import deck from '../content/deck.json';
@@ -37,6 +37,15 @@ describe('myth-buster scoring', () => {
     expect(mythBusters(s).map((r) => r.points)).toEqual([0, 0]);
     s.revealed = { s: true, l: true };
     expect(mythBusters(s).map((r) => [r.name, r.points])).toEqual([['BEN', 150], ['ANNA', 100]]);
+  });
+});
+
+describe('leader', () => {
+  const item = (id: string, will: number, total: number, ts = 1) => ({ id, will, total, pct: total ? Math.round((100 * will) / total) : null, cyber: 0, ts }) as never;
+  it('picks the most backed, then the higher share, and nothing until someone backs one', () => {
+    expect(leader([item('a', 0, 3), item('b', 0, 0)])).toBeUndefined();
+    expect(leader([item('a', 2, 5), item('b', 3, 6)])).toMatchObject({ id: 'b' });
+    expect(leader([item('a', 2, 5), item('b', 2, 2)])).toMatchObject({ id: 'b' });
   });
 });
 

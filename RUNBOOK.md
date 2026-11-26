@@ -16,7 +16,7 @@ Backup address: https://humain-predictionengine.netlify.app/predictionengine2027
    cd ~/Downloads/humain-prediction-engine && npx firebase database:remove /games/ai-2027 --project predictionengine-46f43 --force && npm run content
    ```
    This also locks the host panel again, so type your word once more.
-2. Open the big screen. It shows **JOIN NOW** and the QR code.
+2. Open the big screen. It shows **JOIN NOW** and the QR code. **Click the CLICK FOR SOUND button (top right) so it reads SOUND ON**, and turn the laptop volume up. Do this again after any reload. Keep "reduce motion" off on that laptop, or the animations will not play.
 3. Open the host panel on your phone and unlock it. The state shows **ARRIVAL**.
 4. Scan the QR code with a phone on mobile data.
 5. Laptop on power, sleep and notifications off.

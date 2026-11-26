@@ -40,6 +40,10 @@ class Sfx {
   blip() { this.tone(520, 880, 0.07); }
   coin() { this.tone(988, 988, 0.07); this.tone(1319, 1319, 0.22, 'square', 0.07, 0.08); }
   start() { [262, 330, 392, 523].forEach((f, i) => this.tone(f, f, 0.12, 'square', 0.06, i * 0.1)); }
+  wrong() { this.tone(220, 90, 0.4, 'sawtooth', 0.09); }
+  fanfare() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, f, i === 6 ? 0.6 : 0.14, 'square', 0.08, i * 0.13)); }
+  /** Whether the browser will actually play: pages are silent until someone clicks. */
+  get audible() { return this.on && this.ctx?.state === 'running'; }
   /** Pitch rises with level. */
   level(n: number) { this.tone(200 + n * 120, 200 + n * 120, 0.08); }
 }

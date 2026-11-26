@@ -37,6 +37,18 @@ main{position:relative;z-index:1}
 #toast{position:fixed;left:50%;top:70px;transform:translateX(-50%) translateY(-20px);z-index:85;font-family:var(--px);font-size:10px;line-height:1.6;padding:12px 14px;background:#000;border:2px solid var(--y);color:var(--y);opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%)}
 
+/* celebration layers */
+.spark{position:fixed;z-index:88;pointer-events:none;background:var(--bc);box-shadow:0 0 10px var(--bc);animation:spark 1.2s cubic-bezier(.15,.7,.5,1) both}
+@keyframes spark{0%{transform:translate(-50%,-50%);opacity:1}60%{transform:translate(var(--dx),var(--dy));opacity:1}100%{transform:translate(var(--dx),calc(var(--dy) + 140px)) scale(.4);opacity:0}}
+.slam{position:fixed;inset:0;z-index:87;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:min(20vw,36vh);color:var(--g);text-shadow:0 0 40px var(--g),.06em .06em 0 #05010f;background:rgba(5,1,15,.82);animation:slam 1.65s ease-in both}
+.slam.fake{color:var(--m);text-shadow:0 0 40px var(--m),.06em .06em 0 #05010f}
+@keyframes slam{0%{transform:scale(4);opacity:0}16%{transform:scale(.9);opacity:1}21%{transform:scale(1.08) rotate(-2deg)}26%{transform:scale(1) rotate(1deg)}31%,78%{transform:none;opacity:1}100%{transform:scale(1.1);opacity:0}}
+.flash{position:fixed;inset:0;z-index:86;pointer-events:none;animation:flash .75s ease-out both}
+.flash.ok{background:rgba(57,255,20,.55)}
+.flash.no{background:rgba(255,60,60,.6);animation:flash .75s ease-out both,rattle .4s steps(2) 2}
+@keyframes flash{from{opacity:1}to{opacity:0}}
+@keyframes rattle{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+
 /* Reduced motion: marching, blinking, starfield and all animation stop; the fire animation is message-only. */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}

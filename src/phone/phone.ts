@@ -5,6 +5,7 @@ import { loadFlagger } from '../shared/flags';
 import { board, deckCards, mythBusters, newest, pointsFor, type BoardItem } from '../shared/game';
 import { cleanPrediction, predictionError } from '../shared/text';
 import type { Answer, StateName } from '../shared/types';
+import { verdictBuzz } from '../ui/juice';
 import { SFX } from '../ui/sound';
 import { ship } from '../ui/sprites';
 import { paint, paintList } from '../ui/paint';
@@ -18,7 +19,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
   const P = {
     mode: '' as '' | 'join' | 'app',
     tab: 'write' as Tab, busy: false, solo: null as string | null,
-    shown: new Set<string>(), limit: FEED_PAGE, lastState: '' as StateName | '',
+    shown: new Set<string>(), buzzed: new Set<string>(), limit: FEED_PAGE, lastState: '' as StateName | '',
     isFlagged: undefined as undefined | ((t: unknown) => boolean),
   };
   let join: ReturnType<typeof mountJoin> | null = null;
@@ -141,6 +142,15 @@ export function mountPhone(root: HTMLElement, store: Store) {
       ${key.seed ? `<div class="follow"><p>Fake in 2026. Will this be true by the end of 2027?</p><p class="seedtext">${esc(key.seedText)}</p>
         <div class="ab">${(['will', 'wont'] as const).map((v) => `<button class="${v === 'will' ? 'up' : 'dn'} px${vote === v ? ' on' : ''}" aria-pressed="${vote === v}" data-act="vote" data-id="${esc(key.seed)}" data-v="${v}">${v === 'will' ? 'YES' : 'NO'}</button>`).join('')}</div></div>` : ''}`;
   }
+  /** Buzz once when the answer to a card on screen arrives. */
+  function buzz(state: StateName) {
+    const s = store.state;
+    const id = state === 'ARRIVAL' ? P.solo : state === 'LIVE_QUIZ' && s.show.card && s.revealed[s.show.card] ? s.show.card : null;
+    const mine = id ? s.answers[id]?.[store.me] : undefined, key = id ? s.keys[id] : undefined;
+    if (!mine || !key || P.buzzed.has(`${id}:${mine.ts}`)) return;
+    P.buzzed.add(`${id}:${mine.ts}`);
+    verdictBuzz((mine.a === 'real') === key.real);
+  }
   const holding = (title: string, line: string) => `<div class="hold"><h2 class="px">${title}</h2><p>${line}</p><p class="px big-score">${myScore()}</p><p class="px dimtxt">YOUR SCORE</p></div>`;
 
   function mainHtml(state: StateName) {
@@ -245,6 +255,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
     $('#tabs').hidden = !onBoard;
     if (onBoard) renderBoard(state === 'FROZEN');
     else paint($('#v-main'), mainHtml(state));
+    buzz(state);
   }
 
   connecting();

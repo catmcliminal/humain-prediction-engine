@@ -10,7 +10,8 @@
 .stat b{display:block;font-family:var(--px);font-size:clamp(18px,1.8vw,32px);color:var(--y);text-shadow:0 0 8px var(--y);font-weight:normal}
 .stat span{font-family:var(--px);font-size:12px;color:var(--dim)}
 .sm{display:grid;grid-template-columns:minmax(0,1fr) var(--sidew);min-height:0;min-width:0}
-.stage{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;padding:2.5vh 3vw}
+.main{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.stage{flex:1;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;padding:2.5vh 3vw}
 .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3vh;min-height:0}
 .center .spr{max-width:60%;height:auto}
 .ms-ship .lt{animation:lt 1.2s steps(2) infinite}
@@ -30,7 +31,7 @@
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:2vh 1.5vw;min-height:0;overflow:hidden}
 .pc{border:3px solid var(--c);background:rgba(11,4,32,.92);padding:1.6vh 1.2vw;display:flex;flex-direction:column;justify-content:space-between;gap:1.4vh;min-height:0;overflow:hidden;animation:incoming .6s ease-out}
 @keyframes incoming{from{transform:translateY(-30px);opacity:0}}
-.pt{font-size:clamp(22px,min(2.2vw,4vh),44px);line-height:1.05;overflow:hidden;overflow-wrap:anywhere}
+.pt{font-size:clamp(20px,min(2vw,3.5vh),42px);line-height:1.05;overflow:hidden;overflow-wrap:anywhere}
 .pm{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:clamp(16px,1.2vw,24px)}
 .pm b{font-weight:normal;color:var(--g)}
 .pm i{font-style:normal;margin-left:auto;font-size:clamp(11px,1vw,18px)}
@@ -51,6 +52,35 @@
 .cbrow b,.cbrow span{font-weight:normal;font-size:12px;color:var(--y)}
 .cbrow p{flex:1;font-size:clamp(18px,min(1.5vw,3vh),30px);line-height:1.05;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dimtxt{color:var(--dim)}
+.snd{font-size:10px;color:var(--dim);border:2px solid var(--line);padding:10px 12px;white-space:nowrap}
+#mother:not([hidden])+.stage{padding-top:1vh}
+#mother{flex:none;position:relative;overflow:hidden;border-bottom:1px dashed var(--line);padding:1.4vh 3vw}
+.ms-fly{transition:transform .7s cubic-bezier(.5,0,.75,0)}
+.ms-fly.out{transform:translateX(110%)}
+.ms-fly.pre{transform:translateX(-110%);transition:none}
+.ms-fly.in{transition:transform 1s cubic-bezier(.2,.8,.3,1)}
+.ms-drift{position:relative;display:flex;align-items:center;gap:1.4vw;width:88%;animation:msdrift 14s ease-in-out infinite alternate}
+@keyframes msdrift{from{transform:translateX(0)}to{transform:translateX(13.6%)}}
+.ms-drift .spr{width:clamp(90px,10vw,200px);height:auto;filter:drop-shadow(0 0 10px rgba(201,195,255,.6))}
+.ms-card{flex:1;min-width:0;border:3px solid var(--g);background:rgba(11,4,32,.95);box-shadow:0 0 22px rgba(57,255,20,.45);padding:.8vh 1vw}
+.ms-card h3{font-weight:normal;font-size:clamp(10px,.8vw,16px);color:var(--y);margin-bottom:.5vh}
+.ms-t{font-size:clamp(20px,min(2vw,3.5vh),42px);line-height:1.02;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.ms-m{display:flex;gap:18px;font-size:clamp(16px,1.1vw,24px)}
+.ms-m b{font-weight:normal;color:var(--g)}
+.ms-flash{position:absolute;right:12px;top:8px;font-size:clamp(11px,1vw,20px);color:var(--y);text-shadow:0 0 12px var(--y);opacity:0}
+.ms-flash.go{animation:msflash 2.6s steps(1) both}
+@keyframes msflash{0%,20%,40%,60%{opacity:1}10%,30%,50%,100%{opacity:0}}
+.flyer{position:fixed;left:0;bottom:4vh;z-index:75;pointer-events:none;display:flex;align-items:center;animation:flyby 4.6s linear both}
+@keyframes flyby{0%{transform:translateX(-100%)}16%{transform:translateX(7vw)}80%{transform:translateX(13vw)}100%{transform:translateX(105vw)}}
+.fl-card{width:min(52vw,900px);border:4px solid var(--sc);background:rgba(11,4,32,.97);box-shadow:0 0 30px var(--sc);padding:1.4vh 1.4vw}
+.fl-card h3{font-weight:normal;font-size:clamp(11px,1vw,20px);color:var(--sc);margin-bottom:1vh}
+.fl-card p{font-size:clamp(24px,min(2.4vw,4.4vh),52px);line-height:1.05;overflow-wrap:anywhere}
+.fl-ship{margin-left:-2px;filter:drop-shadow(0 0 12px var(--sc))}
+.fl-ship .spr{transform:rotate(90deg)}
+.center.wide .sb td{font-size:clamp(22px,min(2.4vw,4.6vh),52px)}
+.sb tr.rise{animation:rise .45s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes rise{from{opacity:0;transform:translateX(-60px) scale(.8)}}
+.sb tr.winner td{background:rgba(255,230,0,.2)}
 .conn{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:70;background:var(--m);color:#000;font-size:12px;padding:8px 14px}
 /* Below 900 px: stack the sidebar under the stage and let the page scroll. A fallback, not a target layout. */
 @media (max-width:900px){#screen{height:auto;grid-template-rows:auto auto}.sm{grid-template-columns:1fr}.stage{min-height:70vh}.side{border-left:0}.sh{flex-wrap:wrap}.grid{grid-template-columns:1fr}}
