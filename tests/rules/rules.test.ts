@@ -96,8 +96,25 @@ describe('answers stay secret', () => {
 });
 
 describe('predictions, votes and tags', () => {
-  it('writing needs PREDICT, a cooldown and no links; there is no total limit', async () => {
-    await assertFails(post('alice', 'p1'));
+  it('public play stays open while the room is elsewhere, and closes on a freeze', async () => {
+    const send = (id: string, extra: object = {}) => db(live, 'alice').ref(G).update({
+      [`predictions/${id}`]: { pid: 'alice', text: 'a perfectly valid prediction', ts: TS, ...extra }, [`players/alice/lastPost`]: TS,
+    });
+    for (const [i, name] of ['ARRIVAL', 'PAUSED', 'LIVE_QUIZ', 'QUIZ_RESULTS'].entries()) {
+      await state(name);
+      await seed(live, { [`${G}/players/alice/lastPost`]: 1 });
+      await assertFails(send(`r${i}`, { room: true }));
+      await assertSucceeds(send(`p${i}`));
+      await assertSucceeds(db(live, 'bob').ref(`${G}/votes/p${i}/bob`).set(3));
+      await assertSucceeds(db(live, 'bob').ref(`${G}/tags/p${i}/bob`).set(true));
+    }
+    await state('FROZEN');
+    await seed(live, { [`${G}/players/alice/lastPost`]: 1 });
+    await assertFails(send('late'));
+    await assertFails(db(live, 'bob').ref(`${G}/votes/p0/bob`).set(4));
+    await assertFails(db(live, 'bob').ref(`${G}/tags/p1/bob`).set(true));
+  });
+  it('writing needs a cooldown and no links; there is no total limit', async () => {
     await state('PREDICT');
     await assertFails(post('alice', 'p1', 'go to example.com now'));
     await assertFails(post('alice', 'p1', 'x'.repeat(141)));

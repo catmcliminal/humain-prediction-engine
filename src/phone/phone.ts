@@ -2,7 +2,7 @@ import { config } from '../config';
 import type { Store } from '../data/store';
 import { ANSWER_WINDOW_MS, FEED_PAGE, LEVELS, POST_INTERVAL_MS, PREDICTION_MAX, RATINGS } from '../shared/constants';
 import { loadFlagger } from '../shared/flags';
-import { board, deckCards, mythBusters, newest, pointsFor, type BoardItem } from '../shared/game';
+import { board, deckCards, mythBusters, newest, phoneState, pointsFor, type BoardItem } from '../shared/game';
 import { cleanPrediction, predictionError } from '../shared/text';
 import type { Answer, StateName, Vote } from '../shared/types';
 import { verdictBuzz } from '../ui/juice';
@@ -250,7 +250,7 @@ export function mountPhone(root: HTMLElement, store: Store) {
       return;
     }
     if (P.mode !== 'app') buildShell();
-    const state = store.show();
+    const state = phoneState(store.show(), store.inRoom());
     if (state !== P.lastState) { P.lastState = state; P.shown.clear(); scrollTo({ top: 0 }); announce(state.replace('_', ' ').toLowerCase()); }
     paint($('#ph-name'), `${ship(esc(me.color), 2)} <b style="color:${esc(me.color)};font-weight:normal">${esc(me.name)}</b>`);
     $('#ph-score').textContent = `${myScore()}`;

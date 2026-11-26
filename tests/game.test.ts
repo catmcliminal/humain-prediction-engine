@@ -1,3 +1,4 @@
+import { phoneState } from '../src/shared/game';
 import { ROOM_MS, roomUrl, stillInRoom } from '../src/shared/room';
 import { describe, expect, it } from 'vitest';
 import { FREEZE_AT } from '../src/shared/constants';
@@ -67,6 +68,16 @@ describe('board', () => {
     expect(items[0].level).toBeNull();
     expect(topCyber(items).map((x) => x.id)).toEqual(['p']);
     expect(rising(items, 60_000).length).toBe(2);
+  });
+});
+
+describe('phone state', () => {
+  it('follows the host in the room and stays on the board for the public', () => {
+    for (const x of ['ARRIVAL', 'PAUSED', 'LIVE_QUIZ', 'QUIZ_RESULTS', 'PREDICT'] as const) {
+      expect(phoneState(x, true)).toBe(x);
+      expect(phoneState(x, false)).toBe('PREDICT');
+    }
+    expect(phoneState('FROZEN', false)).toBe('FROZEN');
   });
 });
 

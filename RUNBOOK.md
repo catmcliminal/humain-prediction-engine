@@ -11,9 +11,9 @@ Christmas meetup, Friday 27 November 2026, 5:00 to 5:10pm, half two running into
 Backup address: https://humain-predictionengine.netlify.app/predictionengine2027/
 
 ## Before doors open
-1. **Reset the quiz and ratings, keeping players, predictions and your approve/hide choices:**
+1. **Reset the quiz only, keeping players, predictions, ratings, tags and your approve/hide choices:**
    ```bash
-   cd ~/Downloads/humain-prediction-engine && for p in answers answered revealed opened show votes tags; do npx firebase database:remove /games/ai-2027/$p --project predictionengine-46f43 --force; done
+   cd ~/Downloads/humain-prediction-engine && for p in answers answered revealed opened show; do npx firebase database:remove /games/ai-2027/$p --project predictionengine-46f43 --force; done
    ```
    Do not remove the whole game: that deletes the predictions collected so far.
 2. Open the big screen. It shows **JOIN NOW** and the QR code. **Click the CLICK FOR SOUND button (top right) so it reads SOUND ON**, and turn the laptop volume up. Do this again after any reload. Keep "reduce motion" off on that laptop, or the animations will not play.
@@ -22,6 +22,8 @@ Backup address: https://humain-predictionengine.netlify.app/predictionengine2027
 5. Laptop on power, sleep and notifications off.
 
 ## The show (host panel buttons)
+These buttons change what the big screen and room phones show. Phones that joined by the ordinary link stay on the prediction board throughout, so the public game never pauses. Only **FREEZE** closes it for everyone.
+
 | When | Tap | The room sees |
 |---|---|---|
 | Arrivals | ARRIVAL | Join, then three warm-up cards at their own pace |

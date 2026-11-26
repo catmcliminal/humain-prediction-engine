@@ -4,6 +4,12 @@ import type { GameState, Prediction, StateName } from './types';
 /** The state every screen shows. The New Year freeze wins over anything the host set. */
 export const stateAt = (s: GameState, now: number): StateName => (now >= FREEZE_AT ? 'FROZEN' : s.show.name ?? 'ARRIVAL');
 
+/**
+ * What a phone shows. Phones in the room follow the host; everyone else has the prediction board the whole time,
+ * until the board is frozen.
+ */
+export const phoneState = (state: StateName, inRoom: boolean): StateName => (inRoom || state === 'FROZEN' ? state : 'PREDICT');
+
 export const deckCards = (s: GameState, deck: 'arrival' | 'live' | 'reserve') =>
   Object.entries(s.cards).filter(([, c]) => c.deck === deck).sort((a, b) => a[1].order - b[1].order).map(([id, c]) => ({ id, ...c }));
 
