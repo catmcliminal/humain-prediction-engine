@@ -1,87 +1,64 @@
-import {
-  CROWD_RATINGS_TO_OVERRULE, CYBER_AVG_MIN, CYBER_MIN, FLEET_MAX, LEVEL_CYBER, LEVEL_UP_VOTES,
-  POINTS_PER_VOTE, RAID, SHOOT_DOWN_MIN,
-} from './constants';
-import type { DerivedPrediction, GameState } from './types';
+import { ANSWER_WINDOW_MS, CORRECT_POINTS, FREEZE_AT, SPEED_BONUS_MAX } from './constants';
+import type { GameState, Prediction, StateName } from './types';
 
-const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
-const size = (o: object | undefined) => (o ? Object.keys(o).length : 0);
+/** The state every screen shows. The New Year freeze wins over anything the host set. */
+export const stateAt = (s: GameState, now: number): StateName => (now >= FREEZE_AT ? 'FROZEN' : s.show.name ?? 'ARRIVAL');
 
-export interface DeriveOptions {
-  /** Client-side pre-hide while the flag Function catches up. Overridden by a host RESTORE. */
-  isFlagged?: (text: string) => boolean;
+export const deckCards = (s: GameState, deck: 'arrival' | 'live' | 'reserve') =>
+  Object.entries(s.cards).filter(([, c]) => c.deck === deck).sort((a, b) => a[1].order - b[1].order).map(([id, c]) => ({ id, ...c }));
+
+/** Points for one answer. Live and reserve cards (host-led, with an opening time) earn a speed bonus. */
+export function pointsFor(correct: boolean, solo: boolean, answeredAt: number, openedAt: number | undefined) {
+  if (!correct) return 0;
+  if (solo || !openedAt) return CORRECT_POINTS;
+  const left = Math.min(1, Math.max(0, 1 - (answeredAt - openedAt) / ANSWER_WINDOW_MS));
+  return CORRECT_POINTS + Math.round(SPEED_BONUS_MAX * left);
 }
 
-/** Pure scoring and classification. Hidden predictions are excluded everywhere; scrubbed ones are not. */
-export function derive(s: GameState, opts: DeriveOptions = {}) {
-  const preds: DerivedPrediction[] = [];
-  for (const [id, p] of Object.entries(s.preds)) {
-    if (s.hidden[id]) continue;
-    if (opts.isFlagged && !s.restored[id] && opts.isFlagged(p.text)) continue;
-    const votes = size(s.votes[id]);
-    const rs = Object.values(s.ratings[id] ?? {});
-    const crowd = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
-    const useCrowd = rs.length >= CROWD_RATINGS_TO_OVERRULE;
-    const lvl = useCrowd ? (crowd as number) : p.tag;
-    const cyber = useCrowd && rs.filter((r) => r === 6).length >= CYBER_MIN && (crowd as number) >= CYBER_AVG_MIN;
-    const row = cyber ? LEVEL_CYBER : clamp(Math.round(lvl), 1, 5);
-    const downs = size(s.downs[id]);
-    preds.push({
-      id, ...p, ts: p.ts || 0, votes, downs, nr: rs.length, crowd, useCrowd, lvl, row,
-      points: Math.round(votes * POINTS_PER_VOTE * lvl),
-      reclass: useCrowd && row !== p.tag,
-      lvup: votes >= LEVEL_UP_VOTES,
-      shot: downs >= SHOOT_DOWN_MIN && downs > votes,
+export interface Rank { pid: string; name: string; color: string; points: number; right: number }
+
+/** Myth-buster table over revealed cards only, so nothing leaks before a reveal. */
+export function mythBusters(s: GameState, isFlagged: (t: string) => boolean = () => false): Rank[] {
+  const rows = new Map<string, Rank>();
+  for (const [pid, p] of Object.entries(s.players)) {
+    if (p.name && !isFlagged(p.name)) rows.set(pid, { pid, name: p.name, color: p.color, points: 0, right: 0 });
+  }
+  for (const id of Object.keys(s.revealed)) {
+    const key = s.keys[id], card = s.cards[id];
+    if (!key || !card) continue;
+    for (const [pid, a] of Object.entries(s.answers[id] ?? {})) {
+      const row = rows.get(pid);
+      if (!row) continue;
+      const ok = (a.a === 'real') === key.real;
+      row.points += pointsFor(ok, card.deck === 'arrival', a.ts, s.opened[id]);
+      if (ok) row.right += 1;
+    }
+  }
+  return [...rows.values()].sort((a, b) => b.points - a.points || b.right - a.right || a.name.localeCompare(b.name));
+}
+
+export interface BoardItem extends Prediction { id: string; author: string; color: string; will: number; wont: number; total: number; pct: number | null; cyber: number }
+
+/** Predictions that may be shown: not hidden, and not flagged (unless the host restored them). */
+export function board(s: GameState, isFlagged: (t: string) => boolean = () => false): BoardItem[] {
+  return Object.entries(s.preds)
+    .filter(([id, p]) => !s.hidden[id] && (p.seed || s.restored[id] || !isFlagged(p.text)))
+    .map(([id, p]) => {
+      const v = Object.values(s.votes[id] ?? {});
+      const will = v.filter((x) => x === 'will').length, wont = v.length - will;
+      const who = p.seed ? undefined : s.players[p.pid];
+      return {
+        id, ...p, author: p.seed ? 'humAIn seed' : who?.name ?? '???', color: who?.color ?? '#00e5ff',
+        will, wont, total: v.length, pct: v.length ? Math.round((100 * will) / v.length) : null,
+        cyber: Object.keys(s.tags[id] ?? {}).length,
+      };
     });
-  }
-  const scores: Record<string, number> = {};
-  for (const p of preds) scores[p.pid] = (scores[p.pid] ?? 0) + p.points;
-  const board = Object.entries(s.players)
-    .filter(([, pl]) => !(opts.isFlagged && opts.isFlagged(pl.name))) // a flagged callsign never shows until the server removes it
-    .map(([pid, pl]) => ({ pid, ...pl, score: scores[pid] ?? 0 }))
-    .sort((a, b) => b.score - a.score || (a.ts ?? 0) - (b.ts ?? 0)); // ties: earlier join ranks higher
-  return { preds, board, scores };
 }
 
-/** Mothership: most-upvoted prediction, ties to the earliest. Needs at least one vote. */
-export function leaderOf(preds: DerivedPrediction[]): DerivedPrediction | null {
-  let best: DerivedPrediction | null = null;
-  for (const p of preds) {
-    if (p.votes > 0 && (!best || p.votes > best.votes || (p.votes === best.votes && p.ts < best.ts))) best = p;
-  }
-  return best;
-}
-
-/**
- * What the big screen shows: per row, up to FLEET_MAX cards sorted by votes then newest.
- * The mothership's prediction and scrubbed predictions are not in the rows.
- */
-export function fleetRows(preds: DerivedPrediction[], scrubbed: Record<string, boolean>, leadId: string | null) {
-  const rows: Record<number, { shown: DerivedPrediction[]; total: number }> = {};
-  for (let r = 1; r <= LEVEL_CYBER; r++) {
-    const list = preds
-      .filter((p) => p.row === r && p.id !== leadId && !scrubbed[p.id])
-      .sort((a, b) => b.votes - a.votes || b.ts - a.ts);
-    rows[r] = { shown: list.slice(0, FLEET_MAX), total: list.length };
-  }
-  return rows;
-}
-
-export const onScreenIds = (preds: DerivedPrediction[], scrubbed: Record<string, boolean>, leadId: string | null) =>
-  new Set(Object.values(fleetRows(preds, scrubbed, leadId)).flatMap((r) => r.shown.map((p) => p.id)));
-
-/** Shoot-down rule: 3+ shoot-downs and more shoot-downs than upvotes. Only on-screen cards are targeted. */
-export function shotTargets(preds: DerivedPrediction[], scrubbed: Record<string, boolean>, leadId: string | null) {
-  const on = onScreenIds(preds, scrubbed, leadId);
-  return preds.filter((p) => p.shot && !scrubbed[p.id] && on.has(p.id)).sort((a, b) => b.downs - a.downs || a.ts - b.ts);
-}
-
-/** Timed raid: oldest 0-vote prediction over RAID.minAge old, lowest row first. Only on-screen cards. */
-export function raidTarget(
-  preds: DerivedPrediction[], scrubbed: Record<string, boolean>, leadId: string | null, now: number,
-): DerivedPrediction | null {
-  const on = onScreenIds(preds, scrubbed, leadId);
-  const c = preds.filter((p) => p.votes === 0 && !scrubbed[p.id] && now - p.ts > RAID.minAge && on.has(p.id));
-  c.sort((a, b) => a.row - b.row || a.ts - b.ts);
-  return c[0] ?? null;
-}
+export const newest = (items: BoardItem[]) => [...items].sort((a, b) => b.ts - a.ts);
+/** "Rising": activity per minute of age, so a fresh prediction that is drawing votes comes up first. */
+export const rising = (items: BoardItem[], now: number) => {
+  const heat = (x: BoardItem) => (x.total + 2 * x.cyber) / (1 + (now - x.ts) / 60_000);
+  return [...items].filter((x) => heat(x) > 0).sort((a, b) => heat(b) - heat(a));
+};
+export const topCyber = (items: BoardItem[], n = 5) => items.filter((x) => x.cyber > 0).sort((a, b) => b.cyber - a.cyber || b.ts - a.ts).slice(0, n);

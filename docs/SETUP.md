@@ -46,5 +46,9 @@ In the humain.au site's `netlify.toml`, with `GAME-SITE` the game site's Netlify
 (One rule is enough: `/*` also matches the bare path. A separate no-slash to slash redirect loops.)
 Don't link to the page from the main site's navigation; the QR code is the entry point.
 
-## Host view
-There is no host PIN. Anyone who opens `#host` on the game's address can hide and restore predictions, so keep the address unlinked (the QR code is the only entry point).
+## Host panel
+`/predictionengine2027/host`, unlocked with a host word stored only in the database:
+```bash
+npx firebase database:set /secrets/hostWord --data '"your-word"' --project predictionengine-46f43 --force
+```
+Use lower case. Load the headline deck with `npm run content`.

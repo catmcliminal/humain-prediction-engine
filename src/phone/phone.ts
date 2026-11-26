@@ -1,54 +1,38 @@
-import { LEVELS, MAX_PREDICTIONS_PER_PLAYER, PREDICTION_MAX } from '../shared/constants';
-import { derive, leaderOf } from '../shared/game';
-import { cleanPrediction, hasUrl } from '../shared/text';
-import type { FlagList } from '../shared/types';
 import { config } from '../config';
 import type { Store } from '../data/store';
-import { fireFx } from '../ui/fx';
+import { ANSWER_WINDOW_MS, FEED_PAGE, POST_INTERVAL_MS, PREDICTION_MAX } from '../shared/constants';
+import { loadFlagger } from '../shared/flags';
+import { board, deckCards, mythBusters, newest, pointsFor, type BoardItem } from '../shared/game';
+import { cleanPrediction, predictionError } from '../shared/text';
+import type { Answer, StateName } from '../shared/types';
 import { SFX } from '../ui/sound';
-import { levelColor, sprite } from '../ui/sprites';
-import { announce, hideToast, toast } from '../ui/toast';
-import { $, esc, pad, radioKeys, vibrate } from '../ui/util';
-import { magazineEmpty, rateLimitLeft } from './feed';
+import { ship } from '../ui/sprites';
+import { paint, paintList } from '../ui/paint';
+import { announce, toast } from '../ui/toast';
+import { $, esc, vibrate } from '../ui/util';
 import { mountJoin } from './join';
-import { ranksHtml } from './ranks';
-import { Feed, type Ctx } from './vote';
 
-type Tab = 'fire' | 'vote' | 'ranks';
-const TABS: Tab[] = ['fire', 'vote', 'ranks'];
+type Tab = 'write' | 'vote' | 'mine';
 
 export function mountPhone(root: HTMLElement, store: Store) {
   const P = {
-    mode: '' as '' | 'connecting' | 'join' | 'app',
-    tag: 3, tab: 'fire' as Tab, busy: false,
-    myVotes: null as number | null, lead: undefined as string | undefined, scrubbed: undefined as number | undefined,
-    ups: undefined as number | undefined, cybs: undefined as number | undefined, lastCoin: 0, seen: 0,
-    ranksSig: '', gameOver: false,
+    mode: '' as '' | 'join' | 'app',
+    tab: 'write' as Tab, busy: false, solo: null as string | null,
+    shown: new Set<string>(), limit: FEED_PAGE, lastState: '' as StateName | '',
     isFlagged: undefined as undefined | ((t: unknown) => boolean),
   };
-  let feed: Feed;
   let join: ReturnType<typeof mountJoin> | null = null;
-  let failed = false;
+  void loadFlagger().then((f) => { P.isFlagged = f; render(); });
 
-  /** The flag matcher is loaded lazily to keep the first payload small. It only pre-hides until a host decides. */
-  import('../shared/flagger').then(async (m) => {
-    const list = (await import('../shared/flagwords.json')).default as FlagList;
-    P.isFlagged = m.makeFlagger(list);
-    render();
-  });
-
-  /* ---------- connecting / error ---------- */
   function connecting() {
-    P.mode = 'connecting';
     root.innerHTML = `<div class="view" style="padding-top:60px;text-align:center">
-      <h1 class="logo">${'PREDICTION'}<span>ENGINE</span></h1>
+      <h1 class="logo">PREDICTION<span>ENGINE</span></h1>
       <p class="px blink" style="font-size:12px;margin-top:40px;color:var(--c)" role="status">CONNECTING...</p>
       <div id="retry"></div></div>`;
   }
   function connectFailed() {
-    failed = true;
     toast('COULD NOT CONNECT TO GAME SERVER', 4000);
-    const r = $('#retry');
+    const r = root.querySelector('#retry');
     if (r && !r.firstChild) {
       r.innerHTML = '<button class="big" style="margin-top:30px" id="retryBtn">RETRY</button>';
       $('#retryBtn').addEventListener('click', () => location.reload());
@@ -56,231 +40,215 @@ export function mountPhone(root: HTMLElement, store: Store) {
   }
   const connectTimer = setTimeout(() => { if (!store.ready) connectFailed(); }, config.connectTimeoutMs);
 
-  /* ---------- shell ---------- */
   function buildShell() {
     P.mode = 'app'; join = null;
     root.innerHTML = `
     <div class="topwrap">
-      <div class="top"><span id="ph-name"></span><span class="score" id="ph-score" aria-label="Score">000000</span><button id="sndBtn" aria-pressed="${SFX.on}">${SFX.on ? 'SND ON' : 'SND OFF'}</button></div>
+      <div class="top"><span id="ph-name"></span><span class="score" id="ph-score"></span><button id="sndBtn" aria-pressed="${SFX.on}">${SFX.on ? 'SND ON' : 'SND OFF'}</button></div>
       <div id="recon" class="recon px" role="status" hidden>RECONNECTING</div>
     </div>
-    <section class="view" id="v-fire" role="tabpanel" aria-labelledby="t-fire"></section>
-    <section class="view" id="v-vote" role="tabpanel" aria-labelledby="t-vote" hidden>
-      <h2 class="sr-only" id="vote-h" tabindex="-1">Vote</h2>
-      <div class="sortbar" role="group" aria-label="Sort predictions"><button data-s="new" class="on" aria-pressed="true">NEWEST</button><button data-s="top" aria-pressed="false">TOP</button><button data-s="unrated" aria-pressed="false">UNRATED</button></div>
-      <button class="chip px" id="newchip" hidden></button>
-      <div id="feed"></div>
-      <p class="empty px" id="feedEmpty" hidden></p>
-      <button class="big more" id="moreBtn" hidden></button>
-    </section>
-    <section class="view" id="v-ranks" role="tabpanel" aria-labelledby="t-ranks" hidden></section>
-    <nav class="tabs" role="tablist" aria-label="Game views">${TABS.map((t) =>
-      `<button role="tab" id="t-${t}" aria-controls="v-${t}" aria-selected="${t === 'fire'}" data-t="${t}" class="${t === 'fire' ? 'on' : ''}">${t.toUpperCase()}${t === 'vote' ? '<i class="dot" id="newdot" hidden></i>' : ''}</button>`).join('')}</nav>`;
-    P.tab = 'fire'; P.ranksSig = ''; P.gameOver = false;
-    feed = new Feed($('#feed'), $('#feedEmpty'), $<HTMLButtonElement>('#newchip'), $<HTMLButtonElement>('#moreBtn'));
-    buildFire();
-
-    $('#sndBtn').addEventListener('click', (e) => {
-      SFX.setOn(!SFX.on);
-      const b = e.currentTarget as HTMLElement;
-      b.textContent = SFX.on ? 'SND ON' : 'SND OFF';
-      b.setAttribute('aria-pressed', String(SFX.on));
-      SFX.init(); SFX.blip();
-    });
-    const tabs = $('.tabs');
-    tabs.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (b) { setTab(b.dataset.t as Tab, true); SFX.init(); SFX.blip(); } });
-    tabs.addEventListener('keydown', (e) => {
-      const i = TABS.indexOf(P.tab);
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const t = TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
-        setTab(t, true); $(`#t-${t}`).focus();
-      }
-    });
-    $('.sortbar').addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest('button');
-      if (!b) return;
-      feed.sort = b.dataset.s as typeof feed.sort; feed.shown = 40;
-      root.querySelectorAll('.sortbar button').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
-      feed.refresh(ctx());
-    });
-    $('#newchip').addEventListener('click', () => feed.refresh(ctx()));
-    $('#moreBtn').addEventListener('click', () => { feed.shown += 40; feed.refresh(ctx()); });
-    $('#feed').addEventListener('click', onFeedClick);
-    P.seen = othersCount();
-  }
-
-  /** Predictions by other players: the player's own never light the VOTE dot. */
-  const othersCount = () => Object.values(store.state.preds).filter((p) => p.pid !== store.me).length;
-
-  function buildFire() {
-    $('#v-fire').innerHTML = `
-      <h2 class="prefix" id="fire-h" tabindex="-1">IN 2027...</h2>
-      <div id="fireForm">
-        <textarea id="predInp" class="inp" maxlength="${PREDICTION_MAX}" aria-label="Your prediction, starting In 2027" placeholder="a bank's chatbot asks for a pay rise"></textarea>
-        <div class="count" id="cnt" aria-hidden="true">0/${PREDICTION_MAX}</div>
-        <p id="fireErr" class="err px" role="alert"></p>
-        <span class="field" id="lvLbl">HOW UNHINGED IS IT?</span>
-        <div class="levels" role="radiogroup" aria-labelledby="lvLbl">${[1, 2, 3, 4, 5].map((l) =>
-          `<button type="button" role="radio" aria-checked="${l === P.tag}" aria-label="${l}, ${LEVELS[l].name}" data-l="${l}" style="--lc:${levelColor(l)}" class="${l === P.tag ? 'on' : ''}">${sprite(l, 3)}${l}</button>`).join('')}</div>
-        <div class="lvname" id="lvname"></div>
-        <button class="big" id="fireBtn" disabled>FIRE ▲</button>
-        <button class="big mag" id="magBtn" data-t="vote" hidden>MAGAZINE EMPTY. GO VOTE</button>
-        <div class="fired px" id="ph-fired"></div>
-        <p class="fired px hint">The crowd can reclassify your level,<br>even to CYBERBONKERS.<br>2 votes = LEVEL UP. 3 shoot-downs = rocket.<br>Score = votes × 100 × level.</p>
+    <section class="view" id="v-main"></section>
+    <section class="view" id="v-board" hidden>
+      <div id="v-write">
+        <label class="prefix" for="predInp" style="display:block">IN 2027...</label>
+        <textarea id="predInp" class="inp" maxlength="${PREDICTION_MAX}" placeholder="a bank's chatbot asks for a pay rise"></textarea>
+        <div class="count" id="count">0/${PREDICTION_MAX}</div>
+        <button class="big" id="fireBtn">FIRE</button>
+        <p class="fired" id="fired"></p>
       </div>
-      <div class="over" id="gameOver" hidden><b class="px">GAME OVER</b>Predictions closed at midnight on New Year's Eve. Check RANKS for the final scores.</div>`;
-    const inp = $<HTMLTextAreaElement>('#predInp');
-    const lvl = () => { $('#lvname').textContent = LEVELS[P.tag].name; $('#lvname').style.color = levelColor(P.tag); };
-    lvl();
-    const lv = $('.levels');
-    radioKeys(lv);
-    lv.addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest('button');
-      if (!b) return;
-      P.tag = +b.dataset.l!;
-      lv.querySelectorAll('button').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', String(x === b)); });
-      lvl(); SFX.init(); SFX.level(P.tag);
+      <div id="v-list">
+        <p class="sect" id="listHead"></p>
+        <button class="chip px" id="newchip" hidden></button>
+        <ul id="feed" class="plain"></ul>
+        <p class="empty px" id="feedEmpty" hidden></p>
+        <button class="big more" id="moreBtn" hidden>SHOW MORE</button>
+      </div>
+    </section>
+    <nav class="tabs" id="tabs" aria-label="Game views" hidden>${(['write', 'vote', 'mine'] as Tab[]).map((t) => `<button data-tab="${t}">${t.toUpperCase()}</button>`).join('')}</nav>`;
+    $('#sndBtn').addEventListener('click', () => {
+      SFX.setOn(!SFX.on); SFX.init();
+      $('#sndBtn').textContent = SFX.on ? 'SND ON' : 'SND OFF';
+      $('#sndBtn').setAttribute('aria-pressed', String(SFX.on));
     });
-    inp.addEventListener('input', () => {
-      $('#cnt').textContent = `${inp.value.length}/${PREDICTION_MAX}`;
-      $('#fireErr').textContent = hasUrl(cleanPrediction(inp.value)) ? 'NO LINKS' : '';
-      syncFire();
-    });
-    $('#magBtn').addEventListener('click', () => setTab('vote', true));
+    $('#predInp').addEventListener('input', () => render());
     $('#fireBtn').addEventListener('click', fire);
+    $('#newchip').addEventListener('click', () => { P.shown.clear(); render(); scrollTo({ top: 0 }); });
+    $('#moreBtn').addEventListener('click', () => { P.limit += FEED_PAGE; render(); });
+    $('#tabs').addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-tab]');
+      if (!b) return;
+      P.tab = b.dataset.tab as Tab; P.shown.clear(); P.limit = FEED_PAGE; render(); scrollTo({ top: 0 });
+    });
   }
 
-  async function fire() {
-    const inp = $<HTMLTextAreaElement>('#predInp'), btn = $<HTMLButtonElement>('#fireBtn');
-    const text = cleanPrediction(inp.value);
-    if (text.length < 8 || hasUrl(text) || P.busy || !store.canAct()) return;
-    SFX.init();
-    P.busy = true; syncFire();
-    try {
-      await store.submit(text, P.tag);
-      fireFx(P.tag, store.state.players[store.me]?.color || '#39ff14');
-      inp.value = ''; $('#cnt').textContent = `0/${PREDICTION_MAX}`;
-    } catch (e) {
-      console.error(e);
-      const left = rateLimitLeft(store.state.players[store.me]?.lastPost, store.now());
-      toast(left > 0 ? `RELOADING... ${left}s` : 'MISFIRE. TRY AGAIN'); // the text stays
-    } finally {
-      P.busy = false; syncFire(); btn.blur();
-    }
-  }
-
-  /** FIRE: disabled while short, linked, busy, offline or reloading; swapped for MAGAZINE EMPTY at the cap. */
-  function syncFire() {
-    const fireBtn = $<HTMLButtonElement>('#fireBtn'); if (!fireBtn) return;
-    const me = store.state.players[store.me];
-    const left = rateLimitLeft(me?.lastPost, store.now());
-    const empty = magazineEmpty(me);
-    const text = cleanPrediction($<HTMLTextAreaElement>('#predInp').value);
-    fireBtn.hidden = empty;
-    $('#magBtn').hidden = !empty;
-    fireBtn.textContent = left > 0 ? `RELOADING... ${left}s` : 'FIRE ▲';
-    fireBtn.disabled = text.length < 8 || hasUrl(text) || P.busy || left > 0 || !store.canAct();
-    if (left > 0 && P.mode === 'app' && P.tab === 'fire') toast(`RELOADING... ${left}s`, 1200);
-    else if (left === 0 && $('#toast').textContent?.startsWith('RELOADING')) hideToast();
-  }
-
-  async function onFeedClick(e: Event) {
+  root.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
     if (!b || b.disabled) return;
+    const { act, id = '', v = '' } = b.dataset;
     SFX.init();
-    if (store.frozen()) { toast('GAME OVER'); return; }
-    const id = b.dataset.id!, act = b.dataset.act!;
-    try {
-      if (act === 'vote') { const on = b.getAttribute('aria-pressed') !== 'true'; const p = store.vote(id, on); if (on) { SFX.coin(); vibrate(20); } else SFX.blip(); await p; }
-      else if (act === 'down') { const on = b.getAttribute('aria-pressed') !== 'true'; const p = store.down(id, on); if (on) { SFX.laser(); vibrate(30); } else SFX.blip(); await p; }
-      else { const n = +b.dataset.n!; const p = store.rate(id, n); SFX.level(n); if (n === 6) SFX.start(); await p; }
-    } catch (err) {
-      console.error(err);
-      toast('MISSED. TRY AGAIN'); // RTDB has already reverted the optimistic value
+    if (act === 'answer') {
+      SFX.blip(); vibrate(20);
+      if (store.state.cards[id]?.deck === 'arrival') P.solo = id;
+      store.answer(id, v as Answer).catch((err) => { console.error(err); toast('TOO LATE, OR NOT SENT'); if (P.solo === id) P.solo = null; render(); });
+    } else if (act === 'next') { P.solo = null; scrollTo({ top: 0 }); } else if (act === 'vote') {
+      SFX.blip();
+      store.vote(id, v as 'will' | 'wont').catch((err) => { console.error(err); toast('VOTE NOT COUNTED'); });
+    } else if (act === 'tag') {
+      SFX.blip();
+      store.tag(id, !store.state.tags[id]?.[store.me]).catch((err) => { console.error(err); toast('TAG NOT COUNTED'); });
     }
-  }
-
-  function setTab(t: Tab, focus = false) {
-    P.tab = t;
-    TABS.forEach((x) => {
-      $(`#v-${x}`).hidden = x !== t;
-      const tb = $(`#t-${x}`);
-      tb.classList.toggle('on', x === t);
-      tb.setAttribute('aria-selected', String(x === t));
-    });
-    if (t === 'vote') { P.seen = othersCount(); $('#newdot').hidden = true; feed.refresh(ctx()); }
-    if (t === 'ranks') P.ranksSig = '';
     render();
-    window.scrollTo(0, 0);
-    if (focus) $<HTMLElement>(`#${t === 'fire' ? 'fire-h' : t === 'vote' ? 'vote-h' : 'ranks-h'}`)?.focus({ preventScroll: true });
+  });
+
+  async function fire() {
+    const inp = $<HTMLTextAreaElement>('#predInp');
+    const text = cleanPrediction(inp.value);
+    const bad = predictionError(text);
+    if (bad) { toast(bad); return; }
+    if (P.busy || !store.canAct()) return;
+    P.busy = true; inp.value = '';
+    SFX.init(); SFX.start(); vibrate(30);
+    try { await store.submit(text); toast('PREDICTION FIRED'); } catch (err) {
+      console.error(err); inp.value = text; toast('NOT SENT. WAIT A MOMENT AND TRY AGAIN', 3000);
+    }
+    P.busy = false; render();
   }
 
-  /* ---------- render ---------- */
-  const derived = () => derive(store.state, { isFlagged: P.isFlagged ? (t) => P.isFlagged!(t) : undefined });
-  const ctx = (d = derived()): Ctx => ({ s: store.state, preds: d.preds, me: store.me, frozen: store.frozen(), offline: !store.canAct() });
+  /* ---------- quiz pieces ---------- */
+  function myScore() {
+    const s = store.state;
+    let total = 0;
+    for (const [id, a] of Object.entries(s.answers)) {
+      const mine = a[store.me], key = s.keys[id], card = s.cards[id];
+      if (mine && key && card) total += pointsFor((mine.a === 'real') === key.real, card.deck === 'arrival', mine.ts, s.opened[id]);
+    }
+    return total;
+  }
+  const secondsLeft = (id: string) => Math.max(0, Math.ceil(((store.state.opened[id] ?? 0) + ANSWER_WINDOW_MS - store.now()) / 1000));
+  const answerButtons = (id: string, off: boolean) => `<div class="ab">${(['real', 'fake'] as Answer[]).map((v) =>
+    `<button class="big ans ${v}" data-act="answer" data-id="${id}" data-v="${v}"${off || !store.canAct() ? ' disabled' : ''}>${v.toUpperCase()}</button>`).join('')}</div>`;
+
+  function reveal(id: string) {
+    const s = store.state, key = s.keys[id], mine = s.answers[id]?.[store.me];
+    if (!key) return '<p class="px empty" role="status">CHECKING...</p>';
+    const ok = mine && (mine.a === 'real') === key.real;
+    const pts = mine ? pointsFor(!!ok, s.cards[id].deck === 'arrival', mine.ts, s.opened[id]) : 0;
+    const vote = key.seed ? s.votes[key.seed]?.[store.me] : undefined;
+    return `<div class="verdict ${key.real ? 'real' : 'fake'}"><b class="px">IT'S ${key.real ? 'REAL' : 'FAKE'}</b>
+      <span class="px">${!mine ? 'NO ANSWER' : ok ? `YOU GOT IT +${pts}` : 'NOT THIS TIME'}</span></div>
+      <p class="explain">${esc(key.explainer)}</p>
+      ${key.source ? `<p class="src"><a href="${esc(key.source)}" target="_blank" rel="noopener">Read the source</a></p>` : ''}
+      ${key.seed ? `<div class="follow"><p>Fake in 2026. Will this be true by the end of 2027?</p><p class="seedtext">${esc(key.seedText)}</p>
+        <div class="ab">${(['will', 'wont'] as const).map((v) => `<button class="${v === 'will' ? 'up' : 'dn'} px${vote === v ? ' on' : ''}" aria-pressed="${vote === v}" data-act="vote" data-id="${esc(key.seed)}" data-v="${v}">${v === 'will' ? 'YES' : 'NO'}</button>`).join('')}</div></div>` : ''}`;
+  }
+  const holding = (title: string, line: string) => `<div class="hold"><h2 class="px">${title}</h2><p>${line}</p><p class="px big-score">${myScore()}</p><p class="px dimtxt">YOUR SCORE</p></div>`;
+
+  function mainHtml(state: StateName) {
+    const s = store.state;
+    if (state === 'ARRIVAL') {
+      const deck = deckCards(s, 'arrival');
+      const card = (P.solo && deck.find((c) => c.id === P.solo)) || deck.find((c) => !s.answered[c.id]?.[store.me] && !s.revealed[c.id]);
+      if (!card) return holding("YOU'RE IN", 'Watch the big screen. The live round starts soon.');
+      const done = !!s.answered[card.id]?.[store.me];
+      const n = deck.indexOf(deck.find((c) => c.id === card.id)!) + 1;
+      return `<p class="sect">WARM UP ${n} OF ${deck.length}: REAL OR FAKE?</p><p class="headline">${esc(card.text)}</p>
+        ${done ? `${reveal(card.id)}<button class="big" data-act="next" style="margin-top:20px">NEXT</button>` : answerButtons(card.id, false)}`;
+    }
+    if (state === 'PAUSED') return holding('BACK AT 5', 'Grab a drink.');
+    if (state === 'LIVE_QUIZ') {
+      const id = s.show.card;
+      if (!id || !s.cards[id]) return holding('GET READY', 'Eyes on the big screen.');
+      const mine = !!s.answered[id]?.[store.me], left = secondsLeft(id);
+      let body: string;
+      if (s.revealed[id]) body = reveal(id);
+      else body = `${answerButtons(id, mine || left === 0)}<p class="px timer" role="timer">${mine ? 'LOCKED IN' : left ? `${left}s` : "TIME'S UP"}</p>`;
+      return `<p class="sect">REAL OR FAKE?</p><p class="headline">${esc(s.cards[id].text)}</p>${body}`;
+    }
+    if (state === 'QUIZ_RESULTS') {
+      const ranks = mythBusters(s, P.isFlagged);
+      const i = ranks.findIndex((r) => r.pid === store.me);
+      return `${holding(i >= 0 ? `YOU CAME #${i + 1}` : 'RESULTS', `Out of ${ranks.length} players.`)}${rankTable(ranks.slice(0, 5))}`;
+    }
+    return '';
+  }
+  const rankTable = (rows: ReturnType<typeof mythBusters>) => `<table class="hs"><tbody>${rows.map((r, i) =>
+    `<tr class="${r.pid === store.me ? 'me' : ''}"><td class="r">${i + 1}</td><td style="color:${esc(r.color)}">${esc(r.name)}</td><td class="s">${r.points}</td></tr>`).join('')}</tbody></table>`;
+
+  /* ---------- board ---------- */
+  function cardHtml(x: BoardItem, frozen: boolean) {
+    const mine = x.pid === store.me, my = store.state.votes[x.id]?.[store.me], tagged = !!store.state.tags[x.id]?.[store.me];
+    const off = frozen || !store.canAct() ? ' disabled' : '';
+    const stats = `${x.pct === null ? 'No votes yet' : `${x.pct}% say it will happen · ${x.total} vote${x.total === 1 ? '' : 's'}`}${x.cyber ? ` · <span class="cybertxt">CYBERBONKERS ${x.cyber}</span>` : ''}`;
+    return `<div class="vc"><p class="vc-t">${esc(x.text)}</p><p class="vc-m">by <span style="color:${esc(x.color)}">${esc(x.author)}</span><br>${stats}</p>
+      ${mine ? '<p class="px vc-mine">YOURS</p>' : frozen ? '' : `<div class="vc-a">
+        <button class="up px${my === 'will' ? ' on' : ''}" aria-pressed="${my === 'will'}" data-act="vote" data-id="${esc(x.id)}" data-v="will"${off}>WILL HAPPEN</button>
+        <button class="dn px${my === 'wont' ? ' on' : ''}" aria-pressed="${my === 'wont'}" data-act="vote" data-id="${esc(x.id)}" data-v="wont"${off}>WON'T</button>
+        <button class="cyb px${tagged ? ' on' : ''}" aria-pressed="${tagged}" data-act="tag" data-id="${esc(x.id)}"${off}>CYBERBONKERS</button></div>`}</div>`;
+  }
+
+  function renderBoard(frozen: boolean) {
+    const s = store.state;
+    const tab: Tab = frozen && P.tab === 'write' ? 'vote' : P.tab;
+    $('#v-write').hidden = tab !== 'write';
+    $('#v-list').hidden = tab === 'write';
+    for (const b of $('#tabs').querySelectorAll<HTMLButtonElement>('button')) {
+      b.hidden = frozen && b.dataset.tab === 'write';
+      b.classList.toggle('on', b.dataset.tab === tab);
+      b.setAttribute('aria-current', String(b.dataset.tab === tab));
+      if (b.dataset.tab === 'vote') b.textContent = frozen ? 'BOARD' : 'VOTE';
+    }
+    if (tab === 'write') {
+      const len = $<HTMLTextAreaElement>('#predInp').value.length;
+      $('#count').textContent = `${len}/${PREDICTION_MAX}`;
+      const wait = Math.ceil(((s.players[store.me]?.lastPost ?? 0) + POST_INTERVAL_MS - store.now()) / 1000);
+      const btn = $<HTMLButtonElement>('#fireBtn');
+      btn.disabled = P.busy || !store.canAct() || wait > 0 || len === 0;
+      btn.textContent = wait > 0 ? `RELOADING... ${wait}s` : 'FIRE';
+      const n = Object.values(s.preds).filter((p) => p.pid === store.me).length;
+      $('#fired').textContent = `YOU HAVE MADE ${n} PREDICTION${n === 1 ? '' : 'S'}`;
+      return;
+    }
+    const all = newest(board(s, P.isFlagged));
+    const list = tab === 'mine' ? all.filter((x) => x.pid === store.me) : all;
+    // New arrivals wait behind a button, so cards never move under a thumb.
+    if (!P.shown.size || tab === 'mine') P.shown = new Set(list.map((x) => x.id));
+    for (const x of list) if (x.pid === store.me) P.shown.add(x.id);
+    const fresh = list.filter((x) => !P.shown.has(x.id)).length;
+    const vis = list.filter((x) => P.shown.has(x.id));
+    $('#listHead').textContent = frozen ? 'LOCKED. SEE YOU IN 2027.' : tab === 'mine' ? `YOUR PREDICTIONS · QUIZ SCORE ${myScore()}` : 'WILL IT HAPPEN IN 2027?';
+    $('#newchip').hidden = !fresh;
+    $('#newchip').textContent = `${fresh} NEW. TAP TO SHOW`;
+    paintList($('#feed'), vis.slice(0, P.limit).map((x) => ({ id: x.id, html: cardHtml(x, frozen) })));
+    $('#feedEmpty').hidden = list.length > 0;
+    $('#feedEmpty').textContent = tab === 'mine' ? 'NOTHING FROM YOU YET.' : 'NO PREDICTIONS YET.';
+    $('#moreBtn').hidden = vis.length <= P.limit;
+  }
 
   function render() {
-    const s = store.state;
-    if (!store.ready) { if (P.mode !== 'connecting') connecting(); if (failed) connectFailed(); return; }
+    if (!store.ready) { if (P.mode === 'join') join?.sync(); const r = root.querySelector<HTMLElement>('#recon'); if (r) r.hidden = store.connected; return; }
     clearTimeout(connectTimer);
-    const me = s.players[store.me];
-    if (!me?.name || !store.joinVerdict?.ok) { // joined = callsign written AND approved by the server
+    const me = store.state.players[store.me];
+    if (!me?.name || !store.joinVerdict?.ok) {
       if (P.mode !== 'join') { P.mode = 'join'; join = mountJoin(root, store); }
-      join?.sync();
+      join!.sync();
       return;
     }
     if (P.mode !== 'app') buildShell();
-
-    const d = derived();
-    const mine = d.preds.filter((p) => p.pid === store.me);
-    const c = ctx(d);
-    const nameEl = $('#ph-name');
-    nameEl.textContent = me.name; nameEl.style.color = me.color;
-    $('#ph-score').textContent = pad(d.scores[store.me] || 0);
-    $('#ph-fired').textContent = `SHOTS FIRED: ${me.count ?? Object.values(s.preds).filter((p) => p.pid === store.me).length}`;
-    $('#recon').hidden = !(store.everConnected && !store.connected);
-
-    notify(d, mine);
-    const over = store.frozen();
-    $('#fireForm').hidden = over;
-    $('#fire-h').hidden = over;
-    $('#gameOver').hidden = !over;
-    if (over && !P.gameOver) { P.gameOver = true; announce('Game over'); }
-    syncFire();
-
-    if (P.tab !== 'vote' && othersCount() > P.seen) $('#newdot').hidden = false;
-    feed.update(c); // keep cards current even when hidden, so opening VOTE is instant
-    if (P.tab === 'ranks') {
-      const html = ranksHtml(d, store.me);
-      if (html !== P.ranksSig) { P.ranksSig = html; $('#v-ranks').innerHTML = html; }
-    }
+    const state = store.show();
+    if (state !== P.lastState) { P.lastState = state; P.shown.clear(); scrollTo({ top: 0 }); announce(state.replace('_', ' ').toLowerCase()); }
+    paint($('#ph-name'), `${ship(esc(me.color), 2)} <b style="color:${esc(me.color)};font-weight:normal">${esc(me.name)}</b>`);
+    $('#ph-score').textContent = `${myScore()}`;
+    $('#recon').hidden = store.connected;
+    const onBoard = state === 'PREDICT' || state === 'FROZEN';
+    $('#v-main').hidden = onBoard;
+    $('#v-board').hidden = !onBoard;
+    $('#tabs').hidden = !onBoard;
+    if (onBoard) renderBoard(state === 'FROZEN');
+    else paint($('#v-main'), mainHtml(state));
   }
 
-  /** Toasts and sounds for things that happen to the player's own predictions. First pass only sets baselines. */
-  function notify(d: ReturnType<typeof derived>, mine: ReturnType<typeof derived>['preds']) {
-    const s = store.state;
-    const mv = mine.reduce((a, p) => a + p.votes, 0);
-    const lead = leaderOf(d.preds);
-    const scrubbed = Object.keys(s.scrubbed).filter((id) => s.preds[id]?.pid === store.me).length;
-    const ups = mine.filter((p) => p.lvup).length, cybs = mine.filter((p) => p.row === 6).length;
-    if (P.myVotes === null) P.myVotes = mv;
-    else {
-      // Group bursts: at most one coin toast every 3 s. Until then the baseline holds, so the next one reports the total.
-      if (mv > P.myVotes && Date.now() - P.lastCoin > 3000) { P.lastCoin = Date.now(); toast(`+${mv - P.myVotes} ▲ ON YOUR PREDICTIONS`); SFX.coin(); P.myVotes = mv; }
-      else if (mv < P.myVotes) P.myVotes = mv;
-      if (lead && lead.id !== P.lead && lead.pid === store.me) { setTimeout(() => toast('THE MOTHERSHIP HAS ABDUCTED YOUR PREDICTION'), 900); SFX.start(); }
-      if (scrubbed > (P.scrubbed ?? 0)) { toast('YOUR PREDICTION WAS SCRUBBED. FIRE A BOLDER ONE.', 3000); SFX.boom(); vibrate([80, 40, 80]); }
-      if (ups > (P.ups ?? 0)) { setTimeout(() => toast('LEVEL UP! YOUR PREDICTION IS POWERED UP'), 400); SFX.start(); }
-      if (cybs > (P.cybs ?? 0)) { setTimeout(() => toast('THE CROWD DECLARED YOU CYBERBONKERS'), 1200); SFX.start(); }
-    }
-    P.lead = lead?.id; P.scrubbed = scrubbed; P.ups = ups; P.cybs = cybs;
-  }
-
+  connecting();
   store.on(render);
-  setInterval(() => {
-    if (P.mode === 'app') { render(); } else if (P.mode === 'join') join?.sync();
-  }, 1000);
-  render();
-  return { connectFailed, render };
+  setInterval(() => { if (P.mode === 'app') render(); }, 500);
+  return { connectFailed };
 }

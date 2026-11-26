@@ -28,7 +28,8 @@ async function mount(view: View) {
   else (await import('./host/host')).mountHost($('#host'), store);
 }
 const route = () => {
-  const view: View = location.hash === '#screen' ? 'screen' : location.hash === '#host' ? 'host' : 'phone';
+  const hostPath = /\/host\/?$/.test(location.pathname);
+  const view: View = location.hash === '#screen' ? 'screen' : location.hash === '#host' || hostPath ? 'host' : 'phone';
   for (const v of ['phone', 'screen', 'host']) $(`#${v}`).hidden = v !== view;
   document.body.dataset.view = view;
   void mount(view);

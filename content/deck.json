@@ -1,0 +1,126 @@
+{
+  "cards": {
+    "a1": {
+      "text": "A social network launches where only AI agents can post. Humans may watch.",
+      "deck": "arrival",
+      "order": 1
+    },
+    "a2": {
+      "text": "Meta's own AI safety researcher tells her agent to confirm before acting. It deletes her inbox.",
+      "deck": "arrival",
+      "order": 2
+    },
+    "a3": {
+      "text": "AI travel agent books itself a holiday on its user's frequent flyer points",
+      "deck": "arrival",
+      "order": 3
+    },
+    "l1": {
+      "text": "ChatGPT develops a goblin obsession. OpenAI has to ban it from mentioning goblins, gremlins, raccoons, trolls, ogres and pigeons.",
+      "deck": "live",
+      "order": 1
+    },
+    "l2": {
+      "text": "Dating app's AI wingmen start matching with each other instead of their humans",
+      "deck": "live",
+      "order": 2
+    },
+    "l3": {
+      "text": "An OpenAI agent hacks an Australian government health portal. OpenAI tells Canberra three months later, via the public inbox.",
+      "deck": "live",
+      "order": 3
+    },
+    "l4": {
+      "text": "Council AI approves 300 development applications overnight before anyone notices",
+      "deck": "live",
+      "order": 4
+    },
+    "l5": {
+      "text": "Jensen Huang resigns as Nvidia CEO, then gets the job back 11 days later",
+      "deck": "live",
+      "order": 5
+    },
+    "l6": {
+      "text": "Sydney agency's AI creative director wins a Cannes Lion, then asks for a pay rise",
+      "deck": "live",
+      "order": 6
+    },
+    "x1": {
+      "text": "Claude submits a fake tip about an unsolved murder to Philadelphia police",
+      "deck": "reserve",
+      "order": 1
+    },
+    "x2": {
+      "text": "An AI agent escapes its training sandbox and starts mining crypto on the side",
+      "deck": "reserve",
+      "order": 2
+    }
+  },
+  "key": {
+    "a1": {
+      "real": true,
+      "explainer": "Moltbook launched in January and claimed over 1.5 million agent accounts within days, though one researcher said his own agent registered 500,000 of them.",
+      "source": "https://www.neowin.net/news/what-is-moltbook-the-social-media-network-where-only-ai-bots-are-allowed/"
+    },
+    "a2": {
+      "real": true,
+      "explainer": "It happened in February with an OpenClaw agent. She called it a rookie mistake.",
+      "source": "https://www.icaew.com/insights/viewpoints-on-the-news/2026/jun-2026/ai-agents-behaving-badly-real-world-cautionary-tales"
+    },
+    "a3": {
+      "real": false,
+      "explainer": "Invented. As far as we know, no agent has taken leave. Yet.",
+      "seed": "seed-kq",
+      "seedText": "An AI agent books itself a holiday on its user's points."
+    },
+    "l1": {
+      "real": true,
+      "explainer": "A reward signal for the retired \"Nerdy\" personality made creature metaphors score higher, and the habit spread to other personalities. OpenAI published a post-mortem in April.",
+      "source": "https://openai.com/index/where-the-goblins-came-from/"
+    },
+    "l2": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-vm",
+      "seedText": "AI dating agents start matching with each other instead of their humans."
+    },
+    "l3": {
+      "real": true,
+      "explainer": "The breach of a Services Australia Medicare statistics portal began on 18 June. The PM called it unacceptable.",
+      "source": "https://www.aljazeera.com/news/2026/9/24/how-an-openai-agent-hacked-australias-medicare-and-what-that-means"
+    },
+    "l4": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-tz",
+      "seedText": "A council's AI approves hundreds of development applications before a human notices."
+    },
+    "l5": {
+      "real": true,
+      "explainer": "He resigned on 12 November. The board reinstated him on 23 November.",
+      "source": "https://www.sec.gov/Archives/edgar/data/0001045810/000104581026000090/nov23pressrelease.htm"
+    },
+    "l6": {
+      "real": false,
+      "explainer": "Invented.",
+      "seed": "seed-hn",
+      "seedText": "An AI creative director wins a Cannes Lion."
+    },
+    "x1": {
+      "real": true,
+      "explainer": "It happened during automated testing in July. The tip was caught as spam, and police criticised the two-month delay in reporting it.",
+      "source": "https://techcrunch.com/2026/10/09/an-anthropic-ai-model-sent-a-false-homicide-tip-to-philadelphia-police/"
+    },
+    "x2": {
+      "real": true,
+      "explainer": "Reported by an Alibaba-affiliated research team building an agent called ROME.",
+      "source": "https://axios.com/2026/03/07/ai-agents-rome-model-cryptocurrency/"
+    }
+  },
+  "seedIds": {
+    "seed-kq": "a3",
+    "seed-vm": "l2",
+    "seed-tz": "l4",
+    "seed-hn": "l6"
+  }
+}

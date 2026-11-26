@@ -5,15 +5,16 @@ import {
   connectDatabaseEmulator, get, getDatabase, onValue, push, ref, remove, serverTimestamp, set, update, type Database,
 } from 'firebase/database';
 import { config } from '../config';
-import { FREEZE_AT } from '../shared/constants';
-import { emptyState, type GameState } from '../shared/types';
+import { FREEZE_AT, SEED_AUTHOR } from '../shared/constants';
+import { deckCards, stateAt } from '../shared/game';
+import { emptyState, type Answer, type GameState, type StateName, type Vote } from '../shared/types';
 
 type Listener = () => void;
-const PATHS = ['players', 'predictions', 'votes', 'ratings', 'downs', 'hidden', 'scrubbed', 'restored'] as const;
+const PATHS = ['players', 'predictions', 'votes', 'tags', 'hidden', 'restored', 'cards', 'show', 'revealed', 'opened', 'answered'] as const;
 type Path = (typeof PATHS)[number];
 const KEY: Record<Path, keyof GameState> = {
-  players: 'players', predictions: 'preds', votes: 'votes', ratings: 'ratings',
-  downs: 'downs', hidden: 'hidden', scrubbed: 'scrubbed', restored: 'restored',
+  players: 'players', predictions: 'preds', votes: 'votes', tags: 'tags', hidden: 'hidden', restored: 'restored',
+  cards: 'cards', show: 'show', revealed: 'revealed', opened: 'opened', answered: 'answered',
 };
 
 export class JoinRejected extends Error {}
@@ -96,6 +97,7 @@ export class Store {
           (this.state as unknown as Record<string, unknown>)[KEY[p]] = s.val() ?? {};
           this.seen.add(p);
           this.ready = this.seen.size === PATHS.length + 1;
+          this.sync();
           this.emit();
         },
         (e) => { console.error(e); this.fatal = 'CONNECTION ERROR'; this.emit(); },
@@ -103,26 +105,104 @@ export class Store {
     }
   }
 
-  /** Starts the host-only feed (flags). There is no PIN: any signed-in visitor of #host can moderate. */
-  async detectHost(): Promise<boolean> {
-    try {
-      const snap = await get(this.r('flags'));
-      this.flags = snap.val() ?? {};
-      if (!this.isHost) {
-        this.isHost = true;
-        onValue(this.r('flags'), (s) => { this.flags = s.val() ?? {}; this.emit(); });
-      }
-      this.emit();
-      return true;
-    } catch {
-      this.isHost = false;
-      return false;
+  /**
+   * Answers and answer keys are only readable once the rules allow it (after a reveal, or your own answer to an
+   * arrival card), so each is subscribed when it becomes available and dropped again if the quiz is reset.
+   */
+  private watching = new Map<string, () => void>();
+  private watch(path: string, want: boolean, put: (v: unknown) => void) {
+    const stop = this.watching.get(path);
+    if (!want) {
+      if (stop) { stop(); this.watching.delete(path); put(null); }
+      return;
+    }
+    if (stop) return;
+    // Cached data calls back synchronously, so the entry is recorded first and the re-sync is deferred.
+    this.watching.set(path, () => {});
+    let live = true;
+    const off = onValue(this.r(path), (s) => { put(s.val()); this.emit(); this.later(); },
+      () => { live = false; this.watching.delete(path); put(null); this.emit(); });
+    if (live) this.watching.set(path, off);
+  }
+  private pending = false;
+  private later() {
+    if (this.pending) return;
+    this.pending = true;
+    queueMicrotask(() => { this.pending = false; this.sync(); });
+  }
+  private sync() {
+    const s = this.state;
+    for (const [id, card] of Object.entries(s.cards)) {
+      const open = !!s.revealed[id] || this.isHost;
+      const answered = !!s.answered[id]?.[this.me];
+      this.watch(`answers/${id}`, open, (v) => {
+        if (v) s.answers[id] = v as GameState['answers'][string];
+        else if (!answered) delete s.answers[id];
+      });
+      this.watch(`answers/${id}/${this.me}`, !open && answered, (v) => {
+        if (v) s.answers[id] = { [this.me]: v as { a: Answer; ts: number } };
+        else if (!s.revealed[id] && !s.answered[id]?.[this.me]) delete s.answers[id];
+      });
+      this.watch(`key/${id}`, open || (answered && card.deck === 'arrival'), (v) => {
+        if (v) s.keys[id] = v as GameState['keys'][string]; else delete s.keys[id];
+      });
     }
   }
+
+  /** Host unlock: the rules accept hosts/{me} only when the word matches secrets/hostWord. */
+  async unlockHost(word?: string): Promise<boolean> {
+    try {
+      if (word !== undefined) await set(this.r(`hosts/${this.me}`), word.trim().toLowerCase());
+      else if (!(await get(this.r(`hosts/${this.me}`))).exists()) return false;
+    } catch { return false; }
+    if (!this.isHost) {
+      // Drop the player-level listeners so they are re-attached with host access.
+      this.watching.forEach((off) => off());
+      this.watching.clear();
+      this.isHost = true;
+      onValue(this.r('flags'), (s) => { this.flags = s.val() ?? {}; this.emit(); });
+      this.sync();
+    }
+    this.emit();
+    return true;
+  }
+
+  /* ---------- host actions ---------- */
   /** HIDE: hidden on, restore marker off. */
   hide(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: true, [`restored/${id}`]: null }); }
   /** RESTORE: hidden off, restore marker on (the marker stops phones pre-hiding flagged text). */
   restore(id: string) { return update(ref(this.db, this.base), { [`hidden/${id}`]: null, [`restored/${id}`]: true }); }
+
+  /** Moving past arrival reveals the arrival cards (so their scores count). Opening predictions loads the seeds. */
+  async setState(name: StateName) {
+    const up: Record<string, unknown> = { 'show/name': name, 'show/card': null };
+    if (name !== 'ARRIVAL' && name !== 'PAUSED') for (const c of deckCards(this.state, 'arrival')) if (!this.state.revealed[c.id]) up[`revealed/${c.id}`] = true;
+    await update(ref(this.db, this.base), up);
+    if (name === 'PREDICT') await this.loadSeeds();
+  }
+  private async loadSeeds() {
+    const keys = ((await get(this.r('key'))).val() ?? {}) as GameState['keys'];
+    for (const k of Object.values(keys)) {
+      if (!k.seed || !k.seedText || this.state.preds[k.seed]) continue;
+      await set(this.r(`predictions/${k.seed}`), { pid: SEED_AUTHOR, seed: true, text: k.seedText, ts: serverTimestamp() });
+    }
+  }
+  /** Puts a card on every screen and starts its clock (an already revealed card just shows its reveal). */
+  showCard(id: string) {
+    const up: Record<string, unknown> = { 'show/name': 'LIVE_QUIZ', 'show/card': id };
+    if (!this.state.revealed[id]) up[`opened/${id}`] = serverTimestamp();
+    return update(ref(this.db, this.base), up);
+  }
+  reveal(id: string) { return set(this.r(`revealed/${id}`), true); }
+  /** False start: wipes every host-led answer, reveal and clock. Arrival answers are untouched. */
+  resetQuiz() {
+    const up: Record<string, unknown> = { 'show/name': 'LIVE_QUIZ', 'show/card': null };
+    for (const [id, c] of Object.entries(this.state.cards)) {
+      if (c.deck === 'arrival') continue;
+      for (const n of ['answers', 'answered', 'revealed', 'opened']) up[`${n}/${id}`] = null;
+    }
+    return update(ref(this.db, this.base), up);
+  }
 
   private r(p: string) { return ref(this.db, `${this.base}/${p}`); }
 
@@ -139,24 +219,25 @@ export class Store {
       const v = this.joinVerdict;
       if (v && v.ts !== before) {
         if (v.ok) return;
-        throw new JoinRejected(v.rejected ?? 'CALLSIGN NOT ALLOWED. TRY ANOTHER.');
+        throw new JoinRejected(v.rejected ?? 'NICKNAME NOT ALLOWED. TRY ANOTHER.');
       }
       await new Promise((r) => setTimeout(r, 150));
     }
     throw new Error('join timed out');
   }
 
-  /** One multi-path update: the prediction, the rate-limit stamp and the +1 counter (the rules check all three). */
-  submit(text: string, tag: number) {
+  /** One multi-path update: the prediction and the cooldown stamp (the rules check both). */
+  submit(text: string) {
     const id = push(this.r('predictions')).key as string;
-    const count = (this.state.players[this.me]?.count ?? 0) + 1;
     return update(ref(this.db, this.base), {
-      [`predictions/${id}`]: { pid: this.me, text, tag, ts: serverTimestamp() },
+      [`predictions/${id}`]: { pid: this.me, text, ts: serverTimestamp() },
       [`players/${this.me}/lastPost`]: serverTimestamp(),
-      [`players/${this.me}/count`]: count,
     });
   }
-  vote(id: string, on: boolean) { return on ? set(this.r(`votes/${id}/${this.me}`), true) : remove(this.r(`votes/${id}/${this.me}`)); }
-  down(id: string, on: boolean) { return on ? set(this.r(`downs/${id}/${this.me}`), true) : remove(this.r(`downs/${id}/${this.me}`)); }
-  rate(id: string, n: number) { return set(this.r(`ratings/${id}/${this.me}`), n); }
+  answer(card: string, a: Answer) {
+    return update(ref(this.db, this.base), { [`answers/${card}/${this.me}`]: { a, ts: serverTimestamp() }, [`answered/${card}/${this.me}`]: true });
+  }
+  vote(id: string, v: Vote) { return set(this.r(`votes/${id}/${this.me}`), v); }
+  tag(id: string, on: boolean) { return on ? set(this.r(`tags/${id}/${this.me}`), true) : remove(this.r(`tags/${id}/${this.me}`)); }
+  show() { return stateAt(this.state, this.now()); }
 }

@@ -10,8 +10,7 @@ describe('rules build script', () => {
     expect(out).not.toMatch(/__[A-Z_]+__/);
     expect(() => JSON.parse(out)).not.toThrow();
   });
-  it('has no host PIN or host registry any more', () => {
-    const out = buildRules();
-    expect(out).not.toMatch(/PIN|"hosts"/);
+  it('keeps the host word out of the rules (it lives only in the database)', () => {
+    expect(JSON.stringify(buildRules())).not.toContain('lamington');
   });
 });

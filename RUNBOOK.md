@@ -1,53 +1,51 @@
-# Prediction Engine: run-of-show (one page)
+# Prediction Engine v2: run-of-show (one page)
 
-Room of up to 30 people. Game URL: https://humain.au/predictionengine2027/ (unlinked; the QR code is the entry).
-Backup address if humain.au misbehaves: https://humain-predictionengine.netlify.app/predictionengine2027/
+Christmas meetup, Friday 27 November 2026, 5:00 to 5:10pm, half two running into drinks.
 
 | View | Address | Who |
 |---|---|---|
-| Phone | `/predictionengine2027/` | the room (QR code) |
-| Big screen | `/predictionengine2027/#screen` | projector laptop, full screen (F11 / Ctrl+Cmd+F) |
-| Host | `/predictionengine2027/#host` | you, on your own phone or laptop |
+| Phone | https://humain.au/predictionengine2027/ | the room (QR code) |
+| Big screen | https://humain.au/predictionengine2027/#screen | projector laptop, full screen (Ctrl+Cmd+F) |
+| Host panel | https://humain.au/predictionengine2027/host | you; unlock with your host word |
 
-There is no host PIN. Keep the host address to yourself.
+Backup address: https://humain-predictionengine.netlify.app/predictionengine2027/
 
-## Before the event (day before, then 30 minutes before)
-1. **Fresh game.** The game id is `ai-2027` (set by `VITE_GAME_ID` on Netlify and `config/activeGame` in the database; both already say `ai-2027`).
-   Rehearsal data lives in the same game, so wipe it after every rehearsal, once, before doors open:
+## Before doors open
+1. **Wipe rehearsal data and reload the deck** (do this after your last rehearsal):
    ```bash
-   cd ~/Downloads/humain-prediction-engine && npx firebase database:remove /games/ai-2027 --project predictionengine-46f43 --force
+   cd ~/Downloads/humain-prediction-engine && npx firebase database:remove /games/ai-2027 --project predictionengine-46f43 --force && npm run content
    ```
-   (Do not delete `/config`.) To use a different game id instead: change `VITE_GAME_ID` in Netlify (redeploy) **and** set `config/activeGame` to the same value, or the 3-minute raid watches the wrong game.
-2. **Open the big screen** on the projector laptop at `#screen`, full screen. It should show 0 players, the QR code and "AWAITING A WORTHY PREDICTION".
-3. **Test the QR code** with a phone that is *not* on your Wi-Fi (mobile data). It must open the join page. Check the QR text on screen reads `humain.au/predictionengine2027`.
-4. **Open `#host`** on your device. It should show HOST VIEW and zeros, with no RECONNECTING banner.
-5. **Join as yourself** on a phone, post one prediction, see it on the big screen, then wipe the game again (step 1).
-6. Screen and laptop: power plugged in, sleep and screen saver off, notifications off.
+   This also locks the host panel again, so type your word once more.
+2. Open the big screen. It shows **JOIN NOW** and the QR code.
+3. Open the host panel on your phone and unlock it. The state shows **ARRIVAL**.
+4. Scan the QR code with a phone on mobile data.
+5. Laptop on power, sleep and notifications off.
 
-## During the event
-- Watch the **TO REVIEW** counter on `#host`. Flagged predictions are hidden automatically and wait there: **RESTORE** if it is fine, leave hidden if not.
-- **HIDE** anything else that should not be on the projector. It leaves the big screen and phone feeds at once (it is still stored).
-- Callsigns on the flag list are rejected at join ("CALLSIGN NOT ALLOWED. TRY ANOTHER."); people just pick another.
-- The game scrubs cards by itself (3+ shoot-downs beating the upvotes, plus a timed raid every 3 minutes on the oldest 0-vote card). Nothing for you to do.
-- Levels: 1 PLAUSIBLE, 2 PROBABLE-ISH, 3 BOLD, 4 SPICY, 5 UNHINGED, 6 CYBERBONKERS (crowd-only, reached by the crowd reclassifying).
-- Score = upvotes x 100 x level. Final scores show on the big screen once the game freezes.
+## The show (host panel buttons)
+| When | Tap | The room sees |
+|---|---|---|
+| Arrivals | ARRIVAL | Join, then three warm-up cards at their own pace |
+| Break before the quiz | PAUSED | "Back at 5" and their score |
+| 5:00 quiz | LIVE QUIZ, then NEXT CARD | Card and 20 second countdown |
+| Each card | REVEAL | Answer on screen and phones together, % who got it right |
+| (fake cards) | | Phones ask "true by end of 2027?" Give people a moment |
+| After card 6 | RESULTS | Myth-buster top 10 |
+| Half two | PREDICT | Fakes appear as seed predictions; write, vote, CYBERBONKERS |
+
+- Leaving arrival for LIVE QUIZ closes the warm-up cards and counts their scores.
+- **False start:** RESET QUIZ (tap twice). Wipes live answers and scores; warm-up scores stay.
+- **A card falls flat:** ALL CARDS, then SHOW a reserve card.
+- **FREEZE** (tap twice) locks the board early. PREDICT reopens it. The real freeze is automatic at midnight on New Year's Eve, Sydney time.
+- **Moderation:** flagged predictions are hidden and listed first with FLAGGED. RESTORE or leave hidden. HIDE anything else.
 
 ## If something goes wrong
-**Wi-Fi drops (room or venue).** Phones and screens show RECONNECTING and the buttons pause; nothing is lost, and everything resumes by itself when the network returns. Do not reload anything. If many phones are stuck, ask people to switch to mobile data (the game works on it). The big screen needs its own connection: if the projector laptop is offline, tether it to your phone.
-**The big screen freezes or looks stale.** Reload `#screen` (F5). It rebuilds from the database in seconds. Nobody loses anything.
-**One phone is stuck on CONNECTING.** Reload the page. If it still sticks, close the tab and rescan the QR code.
-**A callsign is rejected and the person cannot find a free one.** Any other name works; letters, numbers, `_ . -` and spaces, 2 to 12 characters.
-**humain.au address does not load.** Use the backup address above (make a second QR from it if needed). Players already in the game are unaffected.
-**Something offensive got through.** HIDE it in `#host`. If it is on the projector right now, that is enough: it disappears within a couple of seconds.
-**Total reset mid-event (last resort).** Run the wipe command in step 1; everyone must rejoin.
+- **Wi-Fi drops:** screens show RECONNECTING and recover by themselves. Ask people to use mobile data. Tether the projector laptop if needed.
+- **Big screen looks stale:** reload it. Nothing is lost.
+- **A phone is stuck:** reload. Same phone keeps the same nickname and score.
+- **Nickname taken or refused:** pick another (2 to 20 characters; letters, numbers, space, _ . -).
+- **humain.au fails:** use the backup address.
 
-## The hard stop
-The game **freezes at midnight 1 January 2027 (AEDT)** (`FREEZE_AT` = `1798722000000`). After that nobody can post, vote or shoot, and the big screen shows FINAL SCORES. A rehearsal after that moment will not accept posts. Changing this needs a code change and a redeploy (`npm run deploy:backend` and a Netlify push); ask Claude.
-
-## Costs and limits
-One Firebase project (Blaze, Singapore). A budget alert is meant to email you at $100 AUD (alert only, not a cap). A 30-person room is a tiny fraction of the free quota.
-
-## Contacts and where things live
-- Code: github.com/catmcliminal/humain-prediction-engine (private). Pushing to `main` redeploys the Netlify site `humain-predictionengine`.
-- Firebase project: `predictionengine-46f43`. Backend deploy: `cd ~/Downloads/humain-prediction-engine && npm run deploy:backend`.
-- The humain.au proxy rule is in the main site's `netlify.toml` (see `docs/SETUP.md` section 8). Never link the page from the main site.
+## After the event
+- Set `minInstances` to 0 in `functions/src/index.ts` and redeploy, to stop the small idle cost of the warm join function.
+- Do not run the wipe command again: predictions must stay until New Year.
+- Roll back to v1 if ever needed: git tag `v1-live` (redeploy rules and Functions from it, and revert `main`).

@@ -83,3 +83,31 @@ p.empty:not(.px){font-family:var(--tx);font-size:22px;line-height:1.15}
 .hs td.gap{text-align:center;color:var(--dim)}
 .hs tr.me td{background:rgba(57,255,20,.12)}
 .sect{font-family:var(--px);font-size:11px;font-weight:normal;color:var(--c);margin:6px 0 14px;line-height:1.6}
+
+/* v2: cards, quiz and board */
+.plain{list-style:none}
+.headline{font-size:32px;line-height:1.05;margin-bottom:22px;overflow-wrap:anywhere}
+.ab{display:flex;gap:12px}
+.ab>button{flex:1}
+.ans.real{background:var(--g)}
+.ans.fake{background:var(--m);box-shadow:0 6px 0 #7a0a68}
+.ans:disabled{background:#333;box-shadow:0 6px 0 #222}
+.timer{text-align:center;font-size:18px;color:var(--y);margin-top:24px}
+.verdict{border:3px solid var(--g);padding:16px;text-align:center;margin-bottom:14px}
+.verdict.fake{border-color:var(--m)}
+.verdict b{display:block;font-weight:normal;font-size:18px;color:var(--g);margin-bottom:10px}
+.verdict.fake b{color:var(--m)}
+.verdict span{font-size:11px;color:var(--y)}
+.explain{font-size:24px;margin-bottom:10px}
+.src a{color:var(--c);display:inline-block;padding:12px 0}
+.follow{border-top:2px dashed var(--line);margin-top:16px;padding-top:16px}
+.seedtext{color:var(--y);margin:8px 0 16px;font-size:24px}
+.hold{text-align:center;padding:30px 0 20px}
+.hold h2{font-weight:normal;font-size:20px;color:var(--c);line-height:1.5;margin-bottom:12px}
+.big-score{font-size:34px;color:var(--y);margin:26px 0 8px;text-shadow:0 0 10px var(--y)}
+.vc-a .up,.vc-a .dn{flex:1}
+.cyb{width:100%;min-height:48px;padding:12px;border:3px solid var(--c);color:var(--c);font-size:11px}
+.cyb.on{background:linear-gradient(90deg,#ff2bd6,#00e5ff,#39ff14);color:#05010f;border-color:#fff}
+.cyb:disabled{opacity:.45}
+.tabs button{font-family:var(--px)}
+#ph-name{display:flex;align-items:center;gap:8px;min-width:0}

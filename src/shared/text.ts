@@ -17,6 +17,9 @@ export const predictionError = (s: string): string | null => {
   return null;
 };
 
-/** Callsigns: uppercase, A-Z 0-9 _ . - and space only, 2..12 chars. */
+/** Callsigns: uppercase, A-Z 0-9 _ . - and space only, 2..20 chars. */
 export const cleanCallsign = (s: string) => s.toUpperCase().replace(/[^A-Z0-9_.\- ]/g, '').trim().slice(0, CALLSIGN_MAX);
 export const callsignOk = (s: string) => s.length >= CALLSIGN_MIN && s.length <= CALLSIGN_MAX;
+
+/** Database-safe key for a nickname, so "Bee" and "BEE" are the same player name. */
+export const nameKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, (c) => `~${c.charCodeAt(0)}`);

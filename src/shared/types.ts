@@ -1,49 +1,36 @@
-export interface Player {
-  name: string;
-  color: string;
-  ts?: number;
-  lastPost?: number;
-  count?: number;
-}
-export interface Prediction {
-  pid: string;
-  text: string;
-  tag: number;
-  ts: number;
-}
-type PerPred<T> = Record<string, Record<string, T>>;
+export const STATES = ['ARRIVAL', 'PAUSED', 'LIVE_QUIZ', 'QUIZ_RESULTS', 'PREDICT', 'FROZEN'] as const;
+export type StateName = (typeof STATES)[number];
+export type Answer = 'real' | 'fake';
+export type Vote = 'will' | 'wont';
 
-/** The prototype's data model under games/{gameId}/ */
+export interface Player { name: string; color: string; ts?: number; lastPost?: number }
+export interface Prediction { pid: string; text: string; ts: number; seed?: boolean }
+export interface Card { text: string; deck: 'arrival' | 'live' | 'reserve'; order: number }
+export interface CardKey { real: boolean; explainer: string; source?: string; seed?: string; seedText?: string }
+export interface Show { name?: StateName; card?: string | null }
+type Nested<T> = Record<string, Record<string, T>>;
+
+/** The data under games/{gameId}/ as a client sees it. Answers and keys hold only what the rules let it read. */
 export interface GameState {
   players: Record<string, Player>;
   preds: Record<string, Prediction>;
-  votes: PerPred<boolean>;
-  ratings: PerPred<number>;
-  downs: PerPred<boolean>;
+  votes: Nested<Vote>;
+  tags: Nested<boolean>;
   hidden: Record<string, boolean>;
-  scrubbed: Record<string, boolean>;
-  /** Host RESTORE marker: overrides the client-side pre-hide for a flagged prediction. */
   restored: Record<string, boolean>;
+  cards: Record<string, Card>;
+  show: Show;
+  revealed: Record<string, boolean>;
+  opened: Record<string, number>;
+  answered: Nested<boolean>;
+  keys: Record<string, CardKey>;
+  answers: Nested<{ a: Answer; ts: number }>;
 }
 
 export const emptyState = (): GameState => ({
-  players: {}, preds: {}, votes: {}, ratings: {}, downs: {}, hidden: {}, scrubbed: {}, restored: {},
+  players: {}, preds: {}, votes: {}, tags: {}, hidden: {}, restored: {}, cards: {}, show: {},
+  revealed: {}, opened: {}, answered: {}, keys: {}, answers: {},
 });
-
-export interface DerivedPrediction extends Prediction {
-  id: string;
-  votes: number;
-  downs: number;
-  nr: number; // number of ratings
-  crowd: number | null;
-  useCrowd: boolean;
-  lvl: number; // the multiplier: crowd average once 3+ ratings, else the tag
-  row: number; // 1..6
-  points: number;
-  reclass: boolean;
-  lvup: boolean;
-  shot: boolean; // 3+ shoot-downs and more than upvotes
-}
 
 export interface FlagList {
   matching: { leet: Record<string, string> };

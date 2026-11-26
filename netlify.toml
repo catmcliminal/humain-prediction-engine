@@ -8,3 +8,9 @@
   to = "/predictionengine2027/"
   status = 301
   force = false
+
+# The host panel's address (the app reads the path and shows the password gate).
+[[redirects]]
+  from = "/predictionengine2027/host"
+  to = "/predictionengine2027/index.html"
+  status = 200

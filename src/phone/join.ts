@@ -14,8 +14,8 @@ export function mountJoin(root: HTMLElement, store: Store) {
     <div class="presents px">${esc(brand.presentsLine)}</div>
     <h1 class="logo">${esc(brand.title.first)}<span>${esc(brand.title.second)}</span></h1>
     <div class="march" aria-hidden="true">${[1, 2, 3, 4, 5].map((l) => sprite(l, 4)).join('')}</div>
-    <p class="blurb">AI in 2027: plausible to unhinged. Fire your predictions, vote on everyone else's.</p>
-    <label class="field" for="nameInp">ENTER CALLSIGN</label>
+    <p class="blurb">How closely were you watching 2026? Then call what happens in 2027.</p>
+    <label class="field" for="nameInp">ENTER NICKNAME</label>
     <input id="nameInp" class="inp" maxlength="${CALLSIGN_MAX}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="PLAYER1" aria-describedby="joinErr"${over ? ' disabled' : ''}>
     <p id="joinErr" class="err px" role="alert"></p>
     <span class="field" id="shipLbl" style="margin-top:22px;display:block">PICK YOUR SHIP</span>

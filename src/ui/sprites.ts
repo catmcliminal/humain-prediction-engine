@@ -1,5 +1,4 @@
 import { brand } from '../brand.config';
-import { LEVELS } from '../shared/constants';
 
 /** Original pixel sprites, one per level (6 = CYBERBONKERS, crowd-only). Do not substitute existing arcade art. */
 export const SPRITES: Record<number, string[]> = {
@@ -15,7 +14,6 @@ export const SHIP = ['....X....', '...XXX...', 'X..XXX..X', 'X.XXXXX.X', 'XXXXXX
 const c = brand.colors;
 const LEVEL_COLORS: Record<number, string> = { 1: c.level1, 2: c.level2, 3: c.level3, 4: c.level4, 5: c.level5, 6: c.cyber };
 export const levelColor = (n: number) => LEVEL_COLORS[n];
-export const levelName = (n: number) => LEVELS[n].name;
 /** The six ship colours a player can pick, with the names screen readers announce. */
 export const SHIP_COLORS = [c.level1, c.level2, c.level3, c.level4, c.level5, c.ship6].map((x) => x.toLowerCase());
 export const SHIP_COLOR_NAMES = ['Green', 'Cyan', 'Yellow', 'Orange', 'Magenta', 'Violet'];

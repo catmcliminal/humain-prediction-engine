@@ -28,3 +28,10 @@
 .act.hide{border-color:var(--m);color:var(--m)}
 .act.restore{border-color:var(--g);color:var(--g)}
 .act:disabled{opacity:.45}
+.hostwrap section{margin-bottom:26px}
+.states{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.act.st{border-color:var(--c);color:var(--c)}
+.act.st.on{background:var(--c);color:#05010f}
+.cardlist{list-style:none}
+.cardlist li{display:flex;gap:12px;align-items:center;margin:10px 0}
+summary{cursor:pointer;font-size:10px;color:var(--dim);padding:14px 0}
